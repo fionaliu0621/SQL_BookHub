@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>賣家個人檔案｜BookHub</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='seller_profile.css') }}"
+    />
+  </head>
+  <body class="profile-page">
+    <header class="profile-nav">
+      <a href="/" class="profile-brand">Book<span>Hub</span>.</a>
+      <nav>
+        <a href="/marketplace">二手書市集</a><a href="/dashboard">會員中心</a>
+      </nav>
+    </header>
+    <main class="profile-wrap">
+      <p class="eyebrow">BOOKHUB / SELLER PROFILE</p>
+      <section class="profile-hero">
+        <div class="profile-avatar" id="avatar">✳</div>
+        <div>
+          <h1 id="sellerName">載入中…</h1>
+          <p id="joined"></p>
+          <p id="bio"></p>
+        </div>
+      </section>
+      <section class="profile-stats">
+        <div><small>販售中</small><strong id="active">—</strong></div>
+        <div><small>已售出書籍</small><strong id="sold">—</strong></div>
+        <div><small>完成訂單</small><strong id="orders">—</strong></div>
+        <div><small>平均評價</small><strong id="rating">—</strong></div>
+      </section>
+      <section>
+        <h2>目前上架的書籍</h2>
+        <div id="books" class="profile-books"></div>
+      </section>
+      <section>
+        <h2>買家評價 <small id="reviewCount"></small></h2>
+        <div id="reviews" class="profile-reviews"></div>
+      </section>
+      <p id="error" role="alert"></p>
+    </main>
+    <script>
+      const $=id=>document.getElementById(id), sellerId={{ seller_id|tojson }};
+      const node=(tag,cls,txt)=>{let n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n};
+      const date=d=>d?new Date(d).toLocaleDateString('zh-TW',{year:'numeric',month:'long'}):'未提供';
+      (async()=>{try{const r=await fetch('/api/sellers/'+sellerId),d=await r.json();if(!r.ok)throw Error(d.error||'無法讀取賣家資料');const s=d.seller;$('sellerName').textContent=s.name;$('avatar').textContent=s.name.slice(0,1);$('joined').textContent='加入時間 · '+date(s.created_at);$('bio').textContent=s.seller_bio||'這位賣家尚未填寫自我介紹。';$('active').textContent=d.books.length;$('sold').textContent=d.sales.sold_books;$('orders').textContent=d.sales.completed_orders;$('rating').textContent=d.rating.review_count?d.rating.avg_rating+' / 5':'尚無評價';$('reviewCount').textContent='('+d.rating.review_count+')';const b=$('books');if(!d.books.length)b.append(node('p','empty','目前沒有販售中的書籍。'));for(const book of d.books){const c=node('article','book');if(book.image_url&&book.image_url.startsWith('/static/uploads/')){const im=node('img');im.src=book.image_url;im.alt=book.title;im.loading='lazy';c.append(im)}else c.append(node('div','book-fallback','BOOKKUB'));c.append(node('h3','',book.title),node('p','','NT$ '+Number(book.price).toLocaleString('zh-TW')));b.append(c)}const v=$('reviews');if(!d.reviews.length)v.append(node('p','empty','尚無買家評價。'));for(const review of d.reviews){const c=node('article','review');c.append(node('strong','','★'.repeat(review.rating)+'☆'.repeat(5-review.rating)),node('p','',review.comment||'買家未留下文字評論。'),node('small','',review.buyer_name+' · '+date(review.created_at)));v.append(c)}}catch(e){$('error').textContent=e.message}})();
+    </script>
+  </body>
+</html>

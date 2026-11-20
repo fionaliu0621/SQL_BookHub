@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>註冊｜BookHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <header class="site-header"><a class="brand" href="/">Book<span>Hub</span><small>校園二手書市集</small></a><a
+            class="back-link" href="/">← 返回首頁</a></header>
+    <main class="auth-layout">
+        <section class="auth-art register-art"><span class="eyebrow">START A NEW CHAPTER</span>
+            <div>
+                <div class="auth-symbol"></div>
+                <h1>你的下一本好書，<br>從這裡開始。</h1>
+                <p>SHARE MORE. WASTE LESS.</p>
+            </div><small>BOOKHUB · CAMPUS BOOK MARKETPLACE.</small>
+        </section>
+        <section class="auth-content">
+            <div class="auth-form"><span class="eyebrow">JOIN BOOKHUB / 02</span>
+                <h2>建立你的帳號</h2>
+                <p class="intro">加入校園二手書市集，讓閱讀持續流動。</p>
+                <form id="registerForm">
+
+                    <label for="role">帳號類型</label><select id="role">
+                        <option value="BUYER">買家</option>
+                        <option value="SELLER">賣家</option>
+                    </select>
+                    <label for="name">姓名／暱稱</label><input id="name" type="text" autocomplete="name"
+                        placeholder="你的名字" required><label for="email">電子郵件</label><input id="email" type="email"
+                        autocomplete="email" placeholder="you@example.com" required><label
+                        for="password">密碼</label><input id="password" type="password" autocomplete="new-password"
+                        minlength="8" placeholder="至少 8 個字元" required>
+                        
+                        
+                        <button class="btn btn-green submit" type="submit">免費註冊 <span>↗</span></button></form>
+                <p class="form-message" id="message" role="alert"></p>
+                <div class="form-switch">已經有帳號？ <a href="/login">前往登入 ↗</a></div>
+            </div>
+        </section>
+    </main>
+    <script>document.getElementById('registerForm').addEventListener('submit', async e => { e.preventDefault(); const msg = document.getElementById('message'); const btn = e.currentTarget.querySelector('button'); msg.textContent = ''; btn.disabled = true; try { const response = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('name').value, email: document.getElementById('email').value, password: document.getElementById('password').value, role: document.getElementById('role').value }) }); const result = await response.json(); if (response.ok) { location.assign('/login?registered=1') } else { msg.textContent = result.error === 'Email already registered' ? '這個電子郵件已經註冊過了' : result.error === 'Password must be at least 8 characters' ? '密碼至少需要 8 個字元' : (result.error || '註冊失敗，請稍後再試。') } } catch { msg.textContent = '無法連線至伺服器，請稍後再試。' } finally { btn.disabled = false } });</script>
+</body>
+
+</html>

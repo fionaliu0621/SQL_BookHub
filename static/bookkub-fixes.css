@@ -1,0 +1,40 @@
+/* Image display for BookKub marketplace */
+.market-card-cover .uploaded-book-image,
+.dialog-cover .uploaded-book-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.cart-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px
+}
+
+.cart-add-btn {
+  border: 0;
+  border-radius: 7px;
+  padding: 13px 18px;
+  background: #e96843;
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer
+}
+
+.cart-add-btn:disabled {
+  opacity: .6
+}
+
+.cart-feedback {
+  font-size: 13px;
+  color: #20392e;
+  margin-top: 12px
+}
+
+.market-nav [hidden] {
+  display: none !important
+}

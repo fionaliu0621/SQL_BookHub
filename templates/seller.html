@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>賣家管理中心｜BookHub</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='seller.css') }}"
+    />
+  </head>
+  <body class="seller-page">
+    <header class="seller-nav">
+      <a class="seller-brand" href="/">Book<span>Hub</span>.</a>
+      <nav>
+        <a href="/marketplace">二手書市集</a><a href="/dashboard">會員中心</a
+        ><a class="seller-nav-active" href="/seller">賣家管理</a>
+      </nav>
+      <a class="seller-new" href="/sell">＋ 我要賣書</a>
+    </header>
+    <main class="seller-container">
+      <div class="seller-eyebrow">MY BOOKHUB / SELLER STUDIO</div>
+      <div class="seller-title">
+        <div>
+          <h1>管理你的<span>好書。</span></h1>
+          <p>查看上架狀態、編輯書籍資訊，追蹤已完成的模擬訂單。</p>
+        </div>
+        <a href="/sell" class="seller-primary">＋ 上架新書 ↗</a>
+      </div>
+      <section class="seller-stats" aria-label="銷售摘要">
+        <div><small>全部書籍</small><strong id="total">—</strong></div>
+        <div><small>販售中</small><strong id="available">—</strong></div>
+        <div><small>已售出</small><strong id="sold">—</strong></div>
+        <div><small>模擬銷售金額</small><strong id="revenue">—</strong></div>
+      </section>
+      <section
+        class="seller-profile-editor"
+        style="
+          margin: 24px 0;
+          padding: 20px;
+          background: #fff;
+          border-radius: 14px;
+        "
+      >
+        <h2>我的公開賣家檔案</h2>
+        <p id="sellerJoined">加入日期：載入中…</p>
+        <a id="publicProfileLink" href="#">查看公開個人檔案 ↗</a>
+        <form id="bioForm" style="margin-top: 14px">
+          <label for="sellerBio">賣家自我介紹（最多 300 字）</label
+          ><textarea
+            id="sellerBio"
+            maxlength="300"
+            rows="3"
+            style="display: block; width: 100%; margin: 8px 0; padding: 10px"
+          ></textarea
+          ><button class="seller-primary" type="submit">儲存介紹</button
+          ><span id="bioMessage" role="status"></span>
+        </form>
+      </section>
+      <div class="seller-tabs">
+        <button class="active" data-tab="books">我的書籍</button
+        ><button data-tab="sales">銷售紀錄</button>
+      </div>
+      <p id="sellerMessage" role="status"></p>
+      <section id="booksPanel">
+        <div id="sellerBooks" class="seller-list"></div>
+      </section>
+      <section id="salesPanel" hidden>
+        <div id="sellerSales" class="seller-list"></div>
+      </section>
+    </main>
+    <footer class="seller-footer">BookHub. · GOOD BOOKS, NEW CHAPTERS.</footer>
+    <dialog id="editDialog" class="seller-dialog">
+      <form id="editForm">
+        <h2>編輯書籍</h2>
+        <input type="hidden" id="editId" /><label
+          >書籍名稱<input id="editTitle" maxlength="200" required /></label
+        ><label
+          >價格（NT$）<input
+            id="editPrice"
+            type="number"
+            min="0.01"
+            step="0.01"
+            max="99999999.99"
+            required /></label
+        ><label
+          >書籍狀況<select id="editCondition">
+            <option value="NEW">全新</option>
+            <option value="LIKE_NEW">近全新</option>
+            <option value="GOOD">良好</option>
+            <option value="FAIR">普通</option>
+          </select></label
+        >
+        <div class="seller-dialog-actions">
+          <button type="button" id="cancelEdit">取消</button
+          ><button type="submit" class="seller-primary">儲存修改</button>
+        </div>
+        <p id="editMessage" role="alert"></p>
+      </form>
+    </dialog>
+    <script>
+      const $ = (id) => document.getElementById(id),
+        labels = {
+          NEW: "全新",
+          LIKE_NEW: "近全新",
+          GOOD: "良好",
+          FAIR: "普通",
+        },
+        statuses = {
+          AVAILABLE: "販售中",
+          RESERVED: "暫停販售",
+          SOLD: "已售出",
+        };
+      const money = (n) =>
+        "NT$ " +
+        Number(n || 0).toLocaleString("zh-TW", { maximumFractionDigits: 2 });
+      let books = [];
+      async function api(url, options) {
+        const r = await fetch(url, options);
+        const raw = await r.text();
+        let d;
+        try {
+          d = JSON.parse(raw);
+        } catch {
+          throw Error(
+            "伺服器回傳錯誤（HTTP " + r.status + "），請檢查 Flask Terminal",
+          );
+        }
+        if (!r.ok) throw Error(d.error || "操作失敗");
+        return d;
+      }
+      function el(tag, cls, txt) {
+        const e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (txt !== undefined) e.textContent = txt;
+        return e;
+      }
+      function cover(url, title) {
+        const d = el("div", "seller-cover");
+        if (url && url.startsWith("/static/uploads/")) {
+          const i = el("img");
+          i.src = url;
+          i.alt = title;
+          i.loading = "lazy";
+          d.append(i);
+        } else {
+          d.textContent = "BOOKKUB ✳";
+        }
+        return d;
+      }
+      function showBooks() {
+        const root = $("sellerBooks");
+        root.replaceChildren();
+        if (!books.length) {
+          root.append(
+            el("p", "seller-empty", "還沒有上架書籍，先來上架第一本吧！"),
+          );
+          return;
+        }
+        for (const b of books) {
+          const card = el("article", "seller-item");
+          card.append(cover(b.image_url, b.title));
+          const info = el("div", "seller-info");
+          info.append(
+            el(
+              "span",
+              "seller-status " + b.status,
+              statuses[b.status] || b.status,
+            ),
+            el("h3", "", b.title),
+            el(
+              "p",
+              "",
+              `${labels[b.condition] || b.condition} · ${money(b.price)}`,
+            ),
+          );
+          card.append(info);
+          const actions = el("div", "seller-actions");
+          if (b.status !== "SOLD") {
+            const edit = el("button", "", "編輯");
+            edit.onclick = () => {
+              $("editId").value = b.id;
+              $("editTitle").value = b.title;
+              $("editPrice").value = b.price;
+              $("editCondition").value = b.condition;
+              $("editMessage").textContent = "";
+              $("editDialog").showModal();
+            };
+            actions.append(edit);
+            const pause = el(
+              "button",
+              "",
+              b.status === "AVAILABLE" ? "暫停販售" : "重新上架",
+            );
+            pause.onclick = async () => {
+              pause.disabled = true;
+              try {
+                await api("/api/seller/books/" + b.id, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    status: b.status === "AVAILABLE" ? "RESERVED" : "AVAILABLE",
+                  }),
+                });
+                await loadBooks();
+              } catch (e) {
+                $("sellerMessage").textContent = e.message;
+              } finally {
+                pause.disabled = false;
+              }
+            };
+            actions.append(pause);
+          } else {
+            actions.append(el("span", "seller-locked", "已完成交易"));
+          }
+          card.append(actions);
+          root.append(card);
+        }
+      }
+      async function loadBooks() {
+        try {
+          const d = await api("/api/seller/books");
+          books = d.books;
+          for (const k of ["total", "available", "sold"])
+            $(k).textContent = d.stats[k];
+          $("revenue").textContent = money(d.stats.revenue);
+          $("sellerMessage").textContent = "";
+          showBooks();
+        } catch (e) {
+          $("sellerMessage").textContent = e.message;
+        }
+      }
+
+async function loadSales() {
+
+    const root = $('sellerSales');
+    root.replaceChildren();
+
+    try {
+
+        const data = await api('/api/seller/sales');
+
+        if (!data.sales.length) {
+            root.append(
+                el('p', 'seller-empty', '目前還沒有銷售紀錄。')
+            );
+            return;
+        }
+
+        // Summary
+        const summary = el('div', 'sales-summary');
+
+        summary.append(
+            el(
+                'p',
+                '',
+                `已售出 ${data.total_items} 本書籍`
+            ),
+            el(
+                'strong',
+                '',
+                `總銷售金額：${money(data.total_revenue)}`
+            )
+        );
+
+        root.append(summary);
+
+        // Table container
+        const wrapper = el('div', 'sales-table-wrapper');
+
+        const table = el('table', 'sales-table');
+
+        // Table Header
+        const thead = document.createElement('thead');
+
+        const headerRow = document.createElement('tr');
+
+        const headers = [
+            '訂單日期',
+            '訂單編號',
+            '買家 ID',
+            '買家名稱',
+            '書籍名稱',
+            '成交金額'
+        ];
+
+        for (const header of headers) {
+
+            const th = document.createElement('th');
+
+            th.textContent = header;
+
+            headerRow.append(th);
+        }
+
+        thead.append(headerRow);
+
+        // Table Body
+        const tbody = document.createElement('tbody');
+
+        for (const sale of data.sales) {
+
+            const tr = document.createElement('tr');
+
+            const values = [
+                new Date(sale.order_date).toLocaleString('zh-TW'),
+                '#' + sale.order_id,
+                sale.buyer_id,
+                sale.buyer_name,
+                sale.book_title,
+                money(sale.price)
+            ];
+
+            for (const value of values) {
+
+                const td = document.createElement('td');
+
+                td.textContent = value;
+
+                tr.append(td);
+            }
+
+            tbody.append(tr);
+        }
+
+        table.append(thead, tbody);
+
+        wrapper.append(table);
+
+        root.append(wrapper);
+
+        $('sellerMessage').textContent = '';
+
+    } catch (error) {
+
+        $('sellerMessage').textContent = error.message;
+    }
+}
+
+
+
+      $("editForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = e.currentTarget.querySelector("[type=submit]");
+        btn.disabled = true;
+        try {
+          await api("/api/seller/books/" + $("editId").value, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: $("editTitle").value,
+              price: $("editPrice").value,
+              condition: $("editCondition").value,
+            }),
+          });
+          $("editDialog").close();
+          await loadBooks();
+        } catch (err) {
+          $("editMessage").textContent = err.message;
+        } finally {
+          btn.disabled = false;
+        }
+      });
+      $("cancelEdit").onclick = () => $("editDialog").close();
+      document.querySelectorAll("[data-tab]").forEach(
+        (btn) =>
+          (btn.onclick = () => {
+            document
+              .querySelectorAll("[data-tab]")
+              .forEach((b) => b.classList.toggle("active", b === btn));
+            $("booksPanel").hidden = btn.dataset.tab !== "books";
+            $("salesPanel").hidden = btn.dataset.tab !== "sales";
+            if (btn.dataset.tab === "sales") loadSales();
+          }),
+      );
+      async function loadProfile() {
+        try {
+          const d = await api("/api/seller/profile");
+          $("sellerBio").value = d.profile.seller_bio || "";
+          $("sellerJoined").textContent =
+            "加入日期：" +
+            new Date(d.profile.created_at).toLocaleDateString("zh-TW");
+          $("publicProfileLink").href = "/seller/" + d.profile.id;
+        } catch (e) {
+          $("bioMessage").textContent = e.message;
+        }
+      }
+      $("bioForm").onsubmit = async (e) => {
+        e.preventDefault();
+        try {
+          await api("/api/seller/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ seller_bio: $("sellerBio").value }),
+          });
+          $("bioMessage").textContent = "儲存成功";
+        } catch (err) {
+          $("bioMessage").textContent = err.message;
+        }
+      };
+      loadBooks();
+      loadProfile();
+    </script>
+  </body>
+</html>

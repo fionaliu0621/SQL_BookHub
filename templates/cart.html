@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>我的購物車｜BookHub</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='cart.css') }}"
+    />
+  </head>
+  <body class="cart-page">
+    <header class="cart-header">
+      <a class="cart-logo" href="/"
+        >Book<span>Kub</span><small>CAMPUS BOOK MARKETPLACE</small></a
+      >
+      <nav>
+        <!-- <a href="/">首頁</a>-->
+         <a href="/marketplace">二手書市集</a 
+        ><a href="/dashboard">會員中心</a>
+      </nav>
+    </header>
+    <main class="cart-shell">
+      <div class="cart-eyebrow">YOUR BOOKS / 03</div>
+      <div class="cart-heading">
+        <div>
+          <h1>我的購物車<span>✳</span></h1>
+          <p>好書已經選好了，下一段閱讀旅程即將開始。</p>
+        </div>
+        <a href="/marketplace" class="cart-back">← 繼續逛逛</a>
+      </div>
+      <div class="cart-layout">
+        <section>
+          <div class="cart-list-heading">
+            <h2>已選書籍</h2>
+            <span id="cartCount">載入中…</span>
+          </div>
+          <div id="cartItems" aria-live="polite"></div>
+          <p id="cartMessage" role="status"></p>
+        </section>
+        <aside class="cart-summary">
+          <div class="cart-eyebrow">ORDER SUMMARY</div>
+          <h2>訂單摘要</h2>
+          <div class="cart-summary-line">
+            <span>商品數量</span><strong id="summaryCount">—</strong>
+          </div>
+          <div class="cart-summary-line cart-total">
+            <span>商品總計</span><strong id="summaryTotal">NT$ 0</strong>
+          </div>
+          <button type="button" id="checkoutBtn" disabled>確認結帳 ↗</button>
+          <p>模擬結帳，不會進行實際付款。結帳後書籍將標記為已售出。</p>
+          <a href="/orders" class="cart-back">查看我的訂單 ↗</a>
+        </aside>
+      </div>
+    </main>
+    <footer class="cart-footer">
+      Book<span>Hub</span>.　讓好書，繼續被閱讀。　© 2026
+    </footer>
+    <script>
+      const list = document.getElementById("cartItems");
+      const message = document.getElementById("cartMessage");
+      const checkoutBtn = document.getElementById("checkoutBtn");
+      const conditions = {
+        NEW: "全新",
+        LIKE_NEW: "近全新",
+        GOOD: "良好",
+        FAIR: "普通",
+      };
+      const price = (value) =>
+        "NT$ " +
+        Number(value).toLocaleString("zh-TW", { maximumFractionDigits: 2 });
+      async function loadCart() {
+        message.textContent = "";
+        list.replaceChildren();
+        try {
+          const response = await fetch("/api/cart");
+          if (response.status === 401) {
+            location.assign("/login?next=/cart");
+            return;
+          }
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "無法載入購物車");
+          document.getElementById("cartCount").textContent =
+            `共 ${data.items.length} 本`;
+          document.getElementById("summaryCount").textContent =
+            `${data.items.length} 本`;
+          document.getElementById("summaryTotal").textContent = price(
+            data.total,
+          );
+          checkoutBtn.disabled =
+            !data.items.length ||
+            data.items.some((item) => item.status !== "AVAILABLE");
+          if (!data.items.length) {
+            const empty = document.createElement("div");
+            empty.className = "cart-empty";
+            empty.textContent = "購物車還是空的，去市集看看吧！";
+            list.append(empty);
+            return;
+          }
+          for (const item of data.items) {
+            const card = document.createElement("article");
+            card.className = "cart-item";
+            const cover = document.createElement("div");
+            cover.className = "cart-item-cover";
+            if (item.image_url) {
+              const img = document.createElement("img");
+              img.src = item.image_url;
+              img.alt = item.title || "書籍照片";
+              cover.append(img);
+            } else {
+              cover.textContent = "BOOKKUB ✳";
+            }
+            const detail = document.createElement("div");
+            detail.className = "cart-item-detail";
+            const title = document.createElement("h3");
+            title.textContent = item.title;
+            const status = document.createElement("p");
+            status.textContent =
+              (conditions[item.condition] || "書況未標示") +
+              (item.status === "AVAILABLE" ? "" : " · 暫時無法購買");
+            const amount = document.createElement("strong");
+            amount.textContent = price(item.price);
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "cart-remove";
+            remove.textContent = "移除 ×";
+            remove.addEventListener("click", async () => {
+              remove.disabled = true;
+              try {
+                const r = await fetch(
+                  "/api/cart/" + encodeURIComponent(item.id),
+                  { method: "DELETE" },
+                );
+                if (!r.ok) {
+                  const err = await r.json();
+                  throw new Error(err.error || "移除失敗");
+                }
+                await loadCart();
+              } catch (err) {
+                message.textContent = err.message;
+                remove.disabled = false;
+              }
+            });
+            detail.append(title, status, amount, remove);
+            card.append(cover, detail);
+            list.append(card);
+          }
+        } catch (error) {
+          message.textContent = error.message;
+        }
+      }
+      checkoutBtn.addEventListener("click", async () => {
+        if (!confirm("確認建立模擬訂單？結帳後書籍將標記為已售出。")) return;
+        checkoutBtn.disabled = true;
+        message.textContent = "正在建立訂單…";
+        try {
+          const r = await fetch("/api/checkout", { method: "POST" });
+          const raw = await r.text();
+          let data;
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            throw new Error(`伺服器錯誤 (HTTP ${r.status})`);
+          }
+          if (!r.ok) throw new Error(data.error || "結帳失敗");
+          location.assign(
+            "/orders?success=" + encodeURIComponent(data.order_id),
+          );
+        } catch (e) {
+          message.textContent = e.message;
+          await loadCart();
+          message.textContent = e.message;
+        }
+      });
+      loadCart();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>我的訂單｜BookHub</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='cart.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='orders.css') }}"
+    />
+  </head>
+  <body class="cart-page">
+    <header class="cart-header">
+      <a class="cart-logo" href="/"
+        >Book<span>Hub</span><small>CAMPUS BOOK MARKETPLACE</small></a
+      >
+      <nav>
+        <a href="/marketplace">二手書市集</a><a href="/cart">我的購物車</a
+        ><a href="/dashboard">會員中心</a>
+      </nav>
+    </header>
+    <main class="cart-shell">
+      <div class="cart-eyebrow">YOUR ORDERS / 04</div>
+      <div class="cart-heading">
+        <div>
+          <h1>我的訂單<span>✳</span></h1>
+          <p>每一本好書，都有新的故事。</p>
+        </div>
+        <a href="/marketplace" class="cart-back">← 繼續逛逛</a>
+      </div>
+      <p id="successMessage" class="order-success" hidden>
+        訂單建立成功！這是模擬結帳，沒有實際扣款。
+      </p>
+      <div id="ordersList" class="orders-list" aria-live="polite">
+        正在載入訂單…
+      </div>
+    </main>
+
+<!-- ===== Review Dialog ===== -->
+
+<dialog id="reviewDialog" class="review-dialog">
+
+    <form id="reviewForm">
+
+        <h2>評價賣家</h2>
+
+        <p id="reviewBookTitle" class="review-book-title"></p>
+
+        <input
+            type="hidden"
+            id="reviewItemId"
+        >
+
+        <div class="review-field">
+
+            <label for="reviewRating">你的評分</label>
+
+            <select id="reviewRating" required>
+                <option value="5">⭐⭐⭐⭐⭐ 非常滿意</option>
+                <option value="4">⭐⭐⭐⭐ 滿意</option>
+                <option value="3">⭐⭐⭐ 普通</option>
+                <option value="2">⭐⭐ 不太滿意</option>
+                <option value="1">⭐ 不滿意</option>
+            </select>
+
+        </div>
+
+        <div class="review-field">
+
+            <label for="reviewComment">評價內容</label>
+
+            <textarea
+                id="reviewComment"
+                rows="4"
+                maxlength="500"
+                placeholder="分享這次購買的體驗..."
+            ></textarea>
+
+        </div>
+
+        <p id="reviewError" class="review-error" role="alert"></p>
+
+        <div class="review-actions">
+
+            <button
+                type="button"
+                class="review-cancel"
+                id="cancelReview"
+            >
+                取消
+            </button>
+
+            <button
+                type="submit"
+                class="review-submit"
+                id="submitReview"
+            >
+                送出評價
+            </button>
+
+        </div>
+
+    </form>
+
+</dialog>
+
+
+    <footer class="cart-footer">
+      Book<span>Hub</span>.　讓好書，繼續被閱讀。　© 2026
+    </footer>
+   
+<script>
+
+// ================================
+// Basic Variables
+// ================================
+
+const ordersList = document.getElementById('ordersList');
+
+const reviewDialog = document.getElementById('reviewDialog');
+
+const reviewForm = document.getElementById('reviewForm');
+
+const reviewError = document.getElementById('reviewError');
+
+const reviewSubmit = document.getElementById('submitReview');
+
+const money = (number) => {
+    return 'NT$ ' + Number(number).toLocaleString('zh-TW', {
+        maximumFractionDigits: 2
+    });
+};
+
+
+// ================================
+// Show Checkout Success Message
+// ================================
+
+const success = new URLSearchParams(
+    window.location.search
+).get('success');
+
+if (success) {
+
+    const message = document.getElementById('successMessage');
+
+    message.hidden = false;
+
+    message.textContent =
+        `訂單 #${success} 建立成功！這是模擬結帳，沒有實際扣款。`;
+}
+
+
+// ================================
+// Helper: Create HTML Element
+// ================================
+
+function createElement(tag, className, text) {
+
+    const element = document.createElement(tag);
+
+    if (className) {
+        element.className = className;
+    }
+
+    if (text !== undefined) {
+        element.textContent = text;
+    }
+
+    return element;
+}
+
+
+// ================================
+// Load Buyer Orders
+// ================================
+
+async function loadOrders() {
+
+    ordersList.textContent = '正在載入訂單…';
+
+    try {
+
+        const response = await fetch('/api/orders');
+
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || '無法載入訂單');
+        }
+
+        ordersList.replaceChildren();
+
+        if (data.orders.length === 0) {
+
+            ordersList.textContent =
+                '目前沒有訂單，去市集尋找好書吧！';
+
+            return;
+        }
+
+        // Loop through each order
+        for (const order of data.orders) {
+
+            const article = createElement(
+                'article',
+                'order-card'
+            );
+
+            // ============================
+            // Order Header
+            // ============================
+
+            const heading = createElement(
+                'div',
+                'order-heading'
+            );
+
+            const orderTitle = createElement(
+                'h2',
+                '',
+                '訂單 #' + order.id
+            );
+
+            const date = createElement(
+                'span',
+                '',
+                new Date(order.created_at).toLocaleString('zh-TW')
+            );
+
+            heading.append(orderTitle, date);
+
+            article.append(heading);
+
+
+            // ============================
+            // Order Items
+            // ============================
+
+            for (const item of order.items) {
+
+                const row = createElement(
+                    'div',
+                    'order-item'
+                );
+
+                const info = createElement(
+                    'div',
+                    'order-book-info'
+                );
+
+                // Book title
+                const bookTitle = createElement(
+                    'h3',
+                    '',
+                    item.title
+                );
+
+                // Seller link
+                const sellerLink = createElement(
+                    'a',
+                    'order-seller-link',
+                    '賣家：' + item.seller_name
+                );
+
+                sellerLink.href =
+                    '/seller/' + item.seller_id;
+
+                info.append(bookTitle, sellerLink);
+
+
+                // ============================
+                // Price + Review Status
+                // ============================
+
+                const right = createElement(
+                    'div',
+                    'order-item-right'
+                );
+
+                const price = createElement(
+                    'strong',
+                    '',
+                    money(item.price)
+                );
+
+                right.append(price);
+
+
+                // Already reviewed
+                if (item.review_id !== null) {
+
+                    const reviewed = createElement(
+                        'span',
+                        'reviewed-badge',
+                        '✓ 已評價'
+                    );
+
+                    right.append(reviewed);
+
+                } else {
+
+                    // Not reviewed
+                    const reviewButton = createElement(
+                        'button',
+                        'review-button',
+                        '⭐ 我要評價'
+                    );
+
+                    reviewButton.type = 'button';
+
+                    reviewButton.addEventListener(
+                        'click',
+                        () => openReview(item)
+                    );
+
+                    right.append(reviewButton);
+                }
+
+                row.append(info, right);
+
+                article.append(row);
+            }
+
+
+            // ============================
+            // Order Total
+            // ============================
+
+            const total = createElement(
+                'div',
+                'order-total',
+                '訂單總計：' + money(order.total)
+            );
+
+            article.append(total);
+
+            ordersList.append(article);
+        }
+
+    } catch (error) {
+
+        ordersList.textContent =
+            '載入失敗：' + error.message;
+    }
+}
+
+
+// ================================
+// Open Review Dialog
+// ================================
+
+function openReview(item) {
+
+    // Reset form
+    reviewForm.reset();
+
+    reviewError.textContent = '';
+
+    // Save current order_item_id
+    document.getElementById('reviewItemId').value =
+        item.order_item_id;
+
+    // Show selected book
+    document.getElementById('reviewBookTitle').textContent =
+        '書籍：' + item.title;
+
+    reviewDialog.showModal();
+}
+
+
+// ================================
+// Close Review Dialog
+// ================================
+
+document.getElementById('cancelReview')
+    .addEventListener('click', () => {
+
+        reviewDialog.close();
+
+    });
+
+
+// ================================
+// Submit Review
+// ================================
+
+reviewForm.addEventListener('submit', async (event) => {
+
+    event.preventDefault();
+
+    const orderItemId = Number(
+        document.getElementById('reviewItemId').value
+    );
+
+    const rating = Number(
+        document.getElementById('reviewRating').value
+    );
+
+    const comment = document.getElementById(
+        'reviewComment'
+    ).value.trim();
+
+    reviewError.textContent = '';
+
+    reviewSubmit.disabled = true;
+
+    reviewSubmit.textContent = '送出中…';
+
+    try {
+
+        const response = await fetch(
+            '/api/seller/reviews',
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+
+                body: JSON.stringify({
+                    order_item_id: orderItemId,
+                    rating: rating,
+                    comment: comment
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error || '評價送出失敗'
+            );
+        }
+
+        // Success
+        reviewDialog.close();
+
+        alert('評價成功！感謝你的分享。');
+
+        // Refresh order list
+        await loadOrders();
+
+    } catch (error) {
+
+        reviewError.textContent =
+            error.message;
+
+    } finally {
+
+        reviewSubmit.disabled = false;
+
+        reviewSubmit.textContent = '送出評價';
+    }
+});
+
+
+// ================================
+// Initial Load
+// ================================
+
+loadOrders();
+
+</script>
+
+
+  </body>
+</html>

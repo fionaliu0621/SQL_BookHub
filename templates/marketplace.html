@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>二手書市集 | BookHub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='marketplace.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='bookkub-fixes.css') }}"
+    />
+  </head>
+  <body class="market-page">
+    <header class="market-header">
+      <div class="market-header-inner">
+        <a class="market-logo" href="/" aria-label="BookHub 首頁"
+          >Book<span>Hub</span><small>CAMPUS BOOK MARKETPLACE</small></a
+        >
+        <nav class="market-nav" aria-label="主要導覽">
+          <a href="/">首頁</a>
+          <a href="/marketplace" class="active" aria-current="page"
+            >二手書市集</a
+          >
+          <a href="/cart" id="cartNav" hidden>購物車</a>
+          <a href="/dashboard" id="dashboardNav" hidden>會員中心</a>
+        </nav>
+        <a class="market-account" id="accountLink" href="/login"
+          >登入 / 註冊 <span aria-hidden="true">↗</span></a
+        >
+      </div>
+    </header>
+
+    <main>
+      <section class="market-hero">
+        <div class="market-wrap">
+          <div class="market-kicker">
+            <span class="market-dot"></span> THE CAMPUS BOOK EXCHANGE
+            <span class="market-hero-no">01 / MARKET</span>
+          </div>
+          <div class="market-hero-main">
+            <div>
+              <h1>
+                找到你需要的<br /><em>那一本書。</em
+                ><span class="market-spark">✳</span>
+              </h1>
+              <p>好書不用買全新。從同學手中，找到下一本陪你上課的書。</p>
+            </div>
+            <div class="market-hero-art" aria-hidden="true">
+              <div class="art-book art-book-back"></div>
+              <div class="art-book art-book-front">
+                <span>BOOK<br />HUB.</span><small>READ · REUSE · REPEAT</small>
+              </div>
+              <div class="art-circle">✳</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="market-content market-wrap"
+        aria-labelledby="market-title"
+      >
+        <div class="market-section-heading">
+          <div>
+            <div class="market-eyebrow">ON THE SHELF / 02</div>
+            <h2 id="market-title">探索二手好書 <span>✳</span></h2>
+          </div>
+          <p id="bookCount" class="market-count" aria-live="polite">
+            正在載入書籍…
+          </p>
+        </div>
+        <div class="market-controls">
+          <label class="market-search"
+            ><span aria-hidden="true">⌕</span
+            ><input
+              id="searchInput"
+              type="search"
+              placeholder="搜尋書籍名稱或學院，例如：線性代數"
+              aria-label="搜尋書籍名稱"
+          /></label>
+          <label class="market-filter"
+            ><span>書籍狀況</span
+            ><select id="conditionFilter">
+              <option value="">全部書況</option>
+              <option value="NEW">全新</option>
+              <option value="LIKE_NEW">近全新</option>
+              <option value="GOOD">良好</option>
+              <option value="FAIR">普通</option>
+            </select></label
+          >
+          <label class="market-filter">
+            <span>學院分類</span>
+            <select id="collegeFilter" aria-label="學院分類">
+              <option value="">全部學院</option>
+              <option value="教育學院">教育學院</option>
+              <option value="文學院">文學院</option>
+              <option value="理學院">理學院</option>
+              <option value="科技與工程學院">科技與工程學院</option>
+              <option value="藝術學院">藝術學院</option>
+              <option value="音樂學院">音樂學院</option>
+              <option value="管理學院">管理學院</option>
+              <option value="國際與社會科學學院">國際與社會科學學院</option>
+              <option value="運動與休閒學院">運動與休閒學院</option>
+              <option value="跨域科技產業創新研究學院">跨域科技產業創新研究學院</option>
+              <option value="其他">其他／通識課程</option>
+            </select>
+          </label>
+        </div>
+        <div id="bookGrid" class="market-grid" aria-live="polite"></div>
+        <div
+          id="marketMessage"
+          class="market-message"
+          role="status"
+          hidden
+        ></div>
+      </section>
+    </main>
+
+    <footer class="market-footer">
+      <div class="market-wrap market-footer-inner">
+        <strong>Book<span>Hub</span>.</strong><span>讓好書，繼續被閱讀。</span
+        ><small>© 2026 BOOKHUB · CAMPUS MARKETPLACE</small>
+      </div>
+    </footer>
+
+    <dialog id="bookDialog" class="book-dialog" aria-labelledby="dialogTitle">
+      <button
+        type="button"
+        id="closeDialog"
+        class="dialog-close"
+        aria-label="關閉"
+      >
+        ×
+      </button>
+      <div class="dialog-cover" aria-hidden="true">
+        <div class="dialog-book-art">BOOKHUB <span>✳</span></div>
+      </div>
+      <div class="dialog-details">
+        <div class="market-eyebrow">BOOK DETAILS / 詳細資訊</div>
+        <h2 id="dialogTitle"></h2>
+        <p id="dialogCondition" class="dialog-condition"></p>
+        <strong id="dialogPrice" class="dialog-price"></strong>
+        <p class="dialog-note">這本書正在尋找下一位主人。</p>
+        <a
+          id="sellerProfileLink"
+          href="#"
+          style="
+            display: none;
+            color: #20392e;
+            font-weight: 700;
+            margin-bottom: 12px;
+          "
+          >查看賣家個人檔案 ↗</a
+        >
+        <div class="cart-dialog-actions">
+          <button type="button" id="addCartBtn" class="cart-add-btn">
+            加入購物車 ＋</button
+          ><button type="button" id="dialogDone" class="dialog-done">
+            繼續逛逛 ↗
+          </button>
+        </div>
+        <p id="cartFeedback" role="status" class="cart-feedback"></p>
+      </div>
+    </dialog>
+
+    <script>
+      const searchInput = document.getElementById("searchInput");
+      const conditionFilter = document.getElementById("conditionFilter");
+      const collegeFilter = document.getElementById("collegeFilter");
+      const bookGrid = document.getElementById("bookGrid");
+      const marketMessage = document.getElementById("marketMessage");
+      const bookCount = document.getElementById("bookCount");
+      const dialog = document.getElementById("bookDialog");
+      const conditions = {
+        NEW: "全新",
+        LIKE_NEW: "近全新",
+        GOOD: "良好",
+        FAIR: "普通",
+      };
+      const formatPrice = (value) =>
+        "NT$ " +
+        Number(value).toLocaleString("zh-TW", { maximumFractionDigits: 2 });
+      let allBooks = [];
+      let currentBook = null;
+      let currentUser = null;
+      async function loadUser() {
+        try {
+          const response = await fetch("/api/me");
+          if (!response.ok) return;
+          currentUser = await response.json();
+          document.getElementById("accountLink").textContent = "會員中心 ↗";
+          document.getElementById("accountLink").href = "/dashboard";
+          document.getElementById("dashboardNav").hidden = false;
+          document.getElementById("cartNav").hidden =
+            currentUser.role !== "BUYER";
+        } catch (_) {
+          /* Guest browsing remains available. */
+        }
+      }
+      loadUser();
+
+      function renderBooks() {
+        const query = searchInput.value.trim().toLocaleLowerCase();
+
+        const condition = conditionFilter.value;
+        const college = collegeFilter.value;
+        const filtered = allBooks.filter((book) => {
+          const title = String(book.title || "").toLocaleLowerCase();
+
+          const bookCollege = String(
+            book.college || "",
+          ).toLocaleLowerCase();
+
+          const matchSearch =
+            title.includes(query) || bookCollege.includes(query);
+
+          const matchCondition = !condition || book.condition === condition;
+
+          const matchCollege = !college || book.college === college;
+
+          return matchSearch && matchCondition && matchCollege;
+        });
+
+     
+        bookGrid.replaceChildren();
+        bookCount.textContent = `共 ${filtered.length} 本書籍`;
+        marketMessage.hidden = filtered.length !== 0;
+        marketMessage.textContent = filtered.length
+          ? ""
+          : allBooks.length
+            ? "找不到符合條件的書籍，試試其他關鍵字吧。"
+            : "目前還沒有上架的書籍，歡迎成為第一位賣家！";
+
+        for (const book of filtered) {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = "market-card";
+          const cover = document.createElement("div");
+          cover.className = "market-card-cover";
+          const mockBook = document.createElement("div");
+          mockBook.className = "market-mock-book";
+          const mockTitle = document.createElement("span");
+          mockTitle.textContent = book.title || "BOOKHUB";
+          const mockMark = document.createElement("small");
+          mockMark.textContent = "BOOKHUB · PRE-LOVED";
+          mockBook.append(mockTitle, mockMark);
+          if (book.image_url) {
+            const img = document.createElement("img");
+            img.src = book.image_url;
+            img.alt = book.title || "書籍照片";
+            img.className = "uploaded-book-image";
+            img.loading = "lazy";
+            cover.append(img);
+          } else {
+            cover.append(mockBook);
+          }
+          const info = document.createElement("div");
+          info.className = "market-card-info";
+          const tag = document.createElement("span");
+          tag.className = "market-card-tag";
+          tag.textContent =
+            (book.college || "其他") +
+            " · " +
+            (conditions[book.condition] || "書況未標示");
+          const title = document.createElement("h3");
+          title.textContent = book.title || "未命名書籍";
+          const bottom = document.createElement("div");
+          bottom.className = "market-card-bottom";
+          const price = document.createElement("strong");
+          price.textContent = formatPrice(book.price);
+          const arrow = document.createElement("span");
+          arrow.textContent = "查看詳情 ↗";
+          bottom.append(price, arrow);
+          info.append(tag, title, bottom);
+          card.append(cover, info);
+          card.addEventListener("click", () => openDetails(book));
+          bookGrid.append(card);
+        }
+      }
+
+      function openDetails(book) {
+        currentBook = book;
+        document.getElementById("cartFeedback").textContent = "";
+        const addButton = document.getElementById("addCartBtn");
+        addButton.textContent = "加入購物車 ＋";
+        addButton.disabled = false;
+        addButton.onclick = null;
+        document.getElementById("dialogTitle").textContent =
+          book.title || "未命名書籍";
+        document.getElementById("dialogCondition").textContent =
+          "書籍狀況 · " + (conditions[book.condition] || "未標示");
+        document.getElementById("dialogPrice").textContent = formatPrice(
+          book.price,
+        );
+        const sellerLink = document.getElementById("sellerProfileLink");
+        sellerLink.style.display = book.seller_id ? "inline-block" : "none";
+        if (book.seller_id) sellerLink.href = "/seller/" + book.seller_id;
+        const dialogCover = dialog.querySelector(".dialog-cover");
+        dialogCover.replaceChildren();
+        if (book.image_url) {
+          const image = document.createElement("img");
+          image.src = book.image_url;
+          image.alt = book.title || "書籍照片";
+          image.className = "uploaded-book-image";
+          dialogCover.append(image);
+        } else {
+          const placeholder = document.createElement("div");
+          placeholder.className = "dialog-book-art";
+          placeholder.textContent = "BOOKHUB ✳";
+          dialogCover.append(placeholder);
+        }
+        dialog.showModal();
+      }
+      document
+        .getElementById("addCartBtn")
+        .addEventListener("click", async () => {
+          if (!currentBook) return;
+          if (!currentUser) {
+            location.assign("/login?next=/marketplace");
+            return;
+          }
+          if (currentUser.role !== "BUYER") {
+            document.getElementById("cartFeedback").textContent =
+              "請使用買家帳號加入購物車。";
+            return;
+          }
+          const button = document.getElementById("addCartBtn");
+          button.disabled = true;
+          try {
+            const response = await fetch("/api/cart", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ book_id: currentBook.id }),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "加入失敗");
+            document.getElementById("cartFeedback").textContent =
+              result.message + "，前往購物車查看。";
+            button.textContent = "查看購物車 ↗";
+            button.disabled = false;
+            button.onclick = () => location.assign("/cart");
+          } catch (error) {
+            document.getElementById("cartFeedback").textContent = error.message;
+            button.disabled = false;
+          }
+        });
+      document
+        .getElementById("closeDialog")
+        .addEventListener("click", () => dialog.close());
+      document
+        .getElementById("dialogDone")
+        .addEventListener("click", () => dialog.close());
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+      searchInput.addEventListener("input", renderBooks);
+      conditionFilter.addEventListener("change", renderBooks);
+      collegeFilter.addEventListener("change", renderBooks);
+      async function loadBooks() {
+        marketMessage.hidden = false;
+        marketMessage.textContent = "正在載入書籍…";
+        try {
+          const response = await fetch("/api/books");
+          if (!response.ok) throw new Error("API error");
+          const data = await response.json();
+          if (!Array.isArray(data)) throw new Error("Invalid response");
+          allBooks = data;
+          renderBooks();
+        } catch (error) {
+          bookCount.textContent = "載入失敗";
+          marketMessage.hidden = false;
+          marketMessage.textContent = "目前無法載入書籍，請稍後再試。";
+        }
+      }
+      searchInput.value = new URLSearchParams(location.search).get("q") || "";
+      loadBooks();
+    </script>
+  </body>
+</html>

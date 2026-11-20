@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BookHub｜校園二手書市集</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/"
+        >Book<span>Hub</span><small>校園二手書市集</small></a
+      >
+      <nav class="nav-links" aria-label="主要導覽">
+        <a class="active" href="/">首頁</a><a href="/marketplace">二手書市集</a
+        ><a class="btn btn-red" href="/sell">我要賣書</a>
+      </nav>
+      <form class="search-bar" id="searchForm">
+        <input
+          id="searchInput"
+          type="search"
+          placeholder="搜尋書籍名稱"
+          aria-label="搜尋書籍"
+        /><button aria-label="搜尋" type="submit">⌕</button>
+      </form>
+      <div class="nav-actions">
+        <a class="btn btn-line" href="/login">登入</a
+        ><a class="btn btn-orange" href="/register">免費註冊</a>
+      </div>
+    </header>
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">BOOKHUB · CAMPUS BOOK MARKETPLACE</span>
+          <h1>讓好書，<br /><em>遇見下一位主人。</em></h1>
+          <p>
+            買書不必花大錢，賣書也可以很簡單。<br />專屬大學生的二手書交易平台。
+          </p>
+          <a class="btn btn-green hero-cta" href="/marketplace"
+            >探索二手書 <span>↗</span></a
+          ><span class="micro">GOOD BOOKS. NEW CHAPTERS.</span>
+        </div>
+
+        
+        <div class="hero-art" aria-hidden="true">
+          <div class="paper-stamp">GOOD<br />BOOKS<br />CLUB</div>
+          <div class="book-stack">
+            <div class="book-spine spine-a">COMPUTER SCIENCE</div>
+            <div class="book-spine spine-b">MATHEMATICS</div>
+            <div class="book-spine spine-c">DESIGN & BUSINESS</div>
+          </div>
+          <div class="sticker">好書<br />接力中 ↗</div>
+        </div>
+      </section>
+    </main>
+    <footer class="footer">
+      <strong>Book<span>Kub</span>.</strong><span>讓好書，遇見下一位主人。</span
+      ><span>© 2026 BookHub</span>
+    </footer>
+    <script>
+      // Search on the dedicated marketplace page; Home has no book grid.
+      document
+        .getElementById("searchForm")
+        .addEventListener("submit", (event) => {
+          event.preventDefault();
+          const query = document.getElementById("searchInput").value.trim();
+          location.assign(
+            "/marketplace" + (query ? "?q=" + encodeURIComponent(query) : ""),
+          );
+        });
+    </script>
+  </body>
+</html>

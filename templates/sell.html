@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>我要賣書 — BookHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="site-header">
+    <a class="brand" href="/">
+        Book<span>Kub</span>
+        <small>CAMPUS BOOK MARKETPLACE</small>
+    </a>
+    <a class="back-link" href="/dashboard">← 返回會員中心</a>
+</header>
+
+<main class="sell-layout">
+    <section class="sell-intro">
+        <span class="eyebrow">PASS IT ON / 01</span>
+        <h1>讓你的舊書，<br><em>找到新主人。</em></h1>
+        <p>幾個簡單步驟，讓不再需要的課本繼續發揮價值。</p>
+
+        <div class="sell-decoration">
+            <span>BOOKHUB</span>
+            <strong>GOOD BOOKS<br>NEW CHAPTERS.</strong>
+            <small>EST. 2026 · CAMPUS MARKETPLACE</small>
+        </div>
+    </section>
+
+    <section class="sell-form-area">
+        <div class="sell-form-heading">
+            <span class="eyebrow">NEW LISTING / 02</span>
+            <h2>上架一本書 ✳</h2>
+            <p>填寫書籍資訊，讓其他同學更容易找到它。</p>
+        </div>
+
+        <form id="sellForm">
+            <div class="form-field">
+                <label for="title">書籍名稱 <span>*</span></label>
+                <input id="title" required maxlength="200"
+                       placeholder="例如：計算機組織與設計">
+            </div>
+
+
+            <div class="form-field">
+                <label for="college">書籍適用學院 <span>*</span></label>
+                <select id="college" name="college" required>
+                    <option value="">請選擇學院</option>
+                    <option value="教育學院">教育學院</option>
+                    <option value="文學院">文學院</option>
+                    <option value="理學院">理學院</option>
+                    <option value="科技與工程學院">科技與工程學院</option>
+                    <option value="藝術學院">藝術學院</option>
+                    <option value="音樂學院">音樂學院</option>
+                    <option value="管理學院">管理學院</option>
+                    <option value="國際與社會科學學院">國際與社會科學學院</option>
+                    <option value="運動與休閒學院">運動與休閒學院</option>
+                    <option value="跨域科技產業創新研究學院">跨域科技產業創新研究學院</option>
+                    <option value="其他">其他／通識課程</option>
+                </select>
+                <small>請選擇最適合這本書的學院分類</small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="price">售價（NT$）<span>*</span></label>
+                    <input id="price" type="number" min="0.01"
+                           max="99999999.99" step="0.01"
+                           placeholder="350" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="condition">書籍狀況 <span>*</span></label>
+                    <select id="condition" required>
+                        <option value="">選擇書況</option>
+                        <option value="NEW">全新</option>
+                        <option value="LIKE_NEW">近全新</option>
+                        <option value="GOOD">良好</option>
+                        <option value="FAIR">普通</option>
+                    </select>
+                </div>
+            </div>
+
+      <div class="form-field">
+    <label for="bookImage">書籍照片 *</label>
+    <input type="file" id="bookImage"
+           accept="image/jpeg,image/png,image/webp" required>
+    <small>支援 JPG、PNG、WEBP，最多 5MB</small>
+</div>
+
+
+            <div class="sell-form-footer">
+                <p>✳ 上架後，其他同學就能在二手書市集看到你的書。</p>
+                <button type="submit" class="submit-button" id="submitBtn">
+                    確認上架 ↗
+                </button>
+                <p id="message" class="message" role="status"></p>
+            </div>
+        </form>
+    </section>
+</main>
+
+<script>
+const form = document.getElementById("sellForm");
+const button = document.getElementById("submitBtn");
+const message = document.getElementById("message");
+
+form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    button.disabled = true;
+    message.textContent = "";
+
+    try {
+        const file = document.getElementById("bookImage").files[0];
+        if (!file) {
+            throw new Error("請上傳書籍照片");
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            throw new Error("圖片不可超過 5MB");
+        }
+
+        const data = new FormData();
+        data.append("title", document.getElementById("title").value.trim());
+        data.append("price", document.getElementById("price").value);
+        data.append("condition", document.getElementById("condition").value);
+        data.append("college", document.getElementById("college").value);
+        data.append("image", file);
+
+        const response = await fetch("/api/books", {
+            method: "POST",
+            body: data
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.error || "上架失敗，請稍後再試");
+        }
+
+        message.style.color = "#276647";
+        message.textContent = "上架成功！書籍編號：" + result.book_id;
+        form.reset();
+    } catch (error) {
+        message.style.color = "#b4412d";
+        message.textContent = error.message || "無法連線到伺服器，請稍後再試";
+    } finally {
+        button.disabled = false;
+    }
+});
+</script>
+</body>
+</html>

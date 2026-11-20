@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>會員中心｜BookHub</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    />
+</head>
+
+<body>
+
+    <!-- ========================= -->
+    <!-- Header -->
+    <!-- ========================= -->
+
+    <header class="site-header">
+
+        <a class="brand" href="/">
+            Book<span>Hub</span>
+            <small>校園二手書市集</small>
+        </a>
+
+        <nav class="nav-links">
+            <a href="/">首頁</a>
+            <a href="/marketplace">二手書市集</a>
+            <a class="active" href="/dashboard">會員中心</a>
+        </nav>
+
+        <button id="logoutTop" class="btn btn-line">
+            登出
+        </button>
+
+    </header>
+
+
+    <!-- ========================= -->
+    <!-- Dashboard Layout -->
+    <!-- ========================= -->
+
+    <main class="dashboard-layout">
+
+        <!-- ========================= -->
+        <!-- Sidebar -->
+        <!-- ========================= -->
+
+        <aside class="sidebar">
+
+            <span class="eyebrow">
+                MY BOOKHUB
+            </span>
+
+            <!-- Common Menu -->
+
+            <a class="selected" href="/dashboard">
+                ⌂　會員中心
+            </a>
+
+            <a href="/marketplace">
+                ▤　二手書市集
+            </a>
+
+
+            <!-- ========================= -->
+            <!-- BUYER MENU -->
+            <!-- ========================= -->
+
+            {% if role == 'BUYER' %}
+
+                <a href="/cart">
+                    ▣　我的購物車
+                </a>
+
+                <a href="/orders">
+                    ◫　我的訂單
+                </a>
+
+                <span class="sidebar-caption">
+                    更多功能即將推出
+                </span>
+
+                <span class="disabled-link">
+                    ✳　我的評價
+                </span>
+
+            {% endif %}
+
+
+            <!-- ========================= -->
+            <!-- SELLER MENU -->
+            <!-- ========================= -->
+
+            {% if role == 'SELLER' %}
+
+                <a href="/seller">
+                    ▤　賣家管理中心
+                </a>
+
+                <a href="/seller/{{ session['user_id'] }}">
+                    ◉　公開賣家檔案
+                </a>
+
+                <a href="/sell">
+                    ＋　我要賣書
+                </a>
+
+            {% endif %}
+
+        </aside>
+
+
+        <!-- ========================= -->
+        <!-- Dashboard Main -->
+        <!-- ========================= -->
+
+        <section class="dashboard-main">
+
+            <span class="eyebrow">
+                HELLO, BOOK LOVER!
+            </span>
+
+            <h1>
+                你好，{{ name }}！
+                <span class="spark">✳</span>
+            </h1>
+
+            <p>
+                歡迎回到 BookHub，開始你的下一段閱讀旅程。
+            </p>
+
+
+            <!-- ========================= -->
+            <!-- Account Banner -->
+            <!-- ========================= -->
+
+            <div class="dashboard-banner">
+
+                <div>
+
+                    <span class="eyebrow">
+                        YOUR ACCOUNT
+                    </span>
+
+                    <h2>
+                        {{ '賣家帳號' if role == 'SELLER' else '買家帳號' }}
+                    </h2>
+
+                    <p>
+                        你已成功登入，可以開始探索二手書市集。
+                    </p>
+
+                </div>
+
+                <div class="banner-icon" aria-hidden="true">
+                    📚
+                </div>
+
+            </div>
+
+
+            <!-- ========================= -->
+            <!-- Dashboard Actions -->
+            <!-- ========================= -->
+
+            <div class="dashboard-actions">
+
+
+                <!-- Common Action -->
+
+                <a class="action-tile" href="/marketplace">
+
+                    <span>↗</span>
+
+                    <h3>探索二手書</h3>
+
+                    <p>
+                        看看同學們最新上架的書籍
+                    </p>
+
+                </a>
+
+
+                <!-- ========================= -->
+                <!-- BUYER ACTIONS -->
+                <!-- ========================= -->
+
+                {% if role == 'BUYER' %}
+
+                    <!-- My Cart -->
+
+                    <a class="action-tile" href="/cart">
+
+                        <span>▣</span>
+
+                        <h3>我的購物車</h3>
+
+                        <p>
+                            查看已加入購物車的二手書
+                        </p>
+
+                    </a>
+
+
+                    <!-- My Orders -->
+
+                    <a class="action-tile" href="/orders">
+
+                        <span>◫</span>
+
+                        <h3>我的訂單</h3>
+
+                        <p>
+                            查看購買紀錄與評價賣家
+                        </p>
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- ========================= -->
+                <!-- SELLER ACTIONS -->
+                <!-- ========================= -->
+
+                {% if role == 'SELLER' %}
+
+                    <!-- Seller Management -->
+
+                    <a class="action-tile" href="/seller">
+
+                        <span>▤</span>
+
+                        <h3>賣家管理中心</h3>
+
+                        <p>
+                            管理上架書籍與查看銷售紀錄
+                        </p>
+
+                    </a>
+
+
+                    <!-- Public Seller Profile -->
+
+                    <a
+                        class="action-tile"
+                        href="/seller/{{ session['user_id'] }}"
+                    >
+
+                        <span>◉</span>
+
+                        <h3>公開賣家檔案</h3>
+
+                        <p>
+                            查看加入日期、評價與交易紀錄
+                        </p>
+
+                    </a>
+
+
+                    <!-- Sell Book -->
+
+                    <a class="action-tile" href="/sell">
+
+                        <span>＋</span>
+
+                        <h3>我要賣書</h3>
+
+                        <p>
+                            上架你的二手書
+                        </p>
+
+                    </a>
+
+                {% endif %}
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- ========================= -->
+    <!-- JavaScript -->
+    <!-- ========================= -->
+
+    <script>
+
+        // Logout
+
+        document
+            .getElementById("logoutTop")
+            .addEventListener("click", async () => {
+
+                try {
+
+                    const response = await fetch("/api/logout", {
+                        method: "POST"
+                    });
+
+                    if (response.ok) {
+
+                        window.location.assign("/login");
+
+                    } else {
+
+                        alert("登出失敗，請重試。");
+
+                    }
+
+                } catch (error) {
+
+                    alert("連線失敗，請重試。");
+
+                }
+
+            });
+
+    </script>
+
+</body>
+</html>

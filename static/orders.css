@@ -1,0 +1,281 @@
+.orders-list {
+    display: grid;
+    gap: 20px;
+    max-width: 920px;
+    margin: 28px auto 80px
+}
+
+.order-card {
+    background: #fff;
+    border: 1px solid #dcded6;
+    border-radius: 16px;
+    padding: 26px;
+    box-shadow: 0 8px 26px rgba(32, 57, 46, .04)
+}
+
+.order-heading,
+.order-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px
+}
+
+.order-heading {
+    border-bottom: 1px solid #e6e7e1;
+    padding-bottom: 14px;
+    margin-bottom: 12px
+}
+
+.order-heading h2 {
+    font-size: 19px;
+    color: #20392e;
+    margin: 0
+}
+
+.order-heading span {
+    font-size: 13px;
+    color: #67746d
+}
+
+.order-item {
+    padding: 10px 0;
+    font-size: 15px
+}
+
+.order-item strong {
+    white-space: nowrap
+}
+
+.order-total {
+    text-align: right;
+    font-weight: 800;
+    color: #20392e;
+    border-top: 1px solid #e6e7e1;
+    padding-top: 16px;
+    margin-top: 10px
+}
+
+.order-success {
+    padding: 16px 20px;
+    background: #e8f2e9;
+    color: #20392e;
+    border-radius: 12px;
+    font-weight: 700
+}
+
+@media(max-width:600px) {
+    .order-heading {
+        align-items: flex-start;
+        flex-direction: column
+    }
+
+    .order-card {
+        padding: 18px
+    }
+}
+
+
+/* ===================================
+   BookKub - Order Management
+=================================== */
+
+.order-book-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.order-book-info h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #20392e;
+}
+
+.order-seller-link {
+    font-size: 13px;
+    color: #738176;
+    text-decoration: none;
+}
+
+.order-seller-link:hover {
+    color: #e96843;
+    text-decoration: underline;
+}
+
+.order-item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.order-item-right strong {
+    font-size: 16px;
+    color: #20392e;
+}
+
+
+/* ===================================
+   Review Button
+=================================== */
+
+.review-button {
+    padding: 9px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #20392e;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.review-button:hover {
+    background: #365b49;
+}
+
+.reviewed-badge {
+    display: inline-block;
+    padding: 7px 12px;
+    border-radius: 8px;
+    background: #e8f2e9;
+    color: #326c45;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+
+/* ===================================
+   Review Dialog
+=================================== */
+
+.review-dialog {
+    width: min(440px, 90vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    border: none;
+    border-radius: 18px;
+    padding: 30px;
+    background: #ffffff;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.15);
+}
+
+.review-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.review-dialog h2 {
+    margin: 0 0 12px;
+    font-size: 24px;
+    color: #20392e;
+}
+
+.review-book-title {
+    color: #738176;
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+.review-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.review-field label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #20392e;
+}
+
+.review-field select,
+.review-field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid #d8ded8;
+    border-radius: 10px;
+    background: #fafbf9;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.review-field textarea {
+    resize: vertical;
+}
+
+.review-field select:focus,
+.review-field textarea:focus {
+    outline: none;
+    border-color: #20392e;
+}
+
+.review-error {
+    color: #c0392b;
+    font-size: 13px;
+}
+
+.review-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.review-actions button {
+    padding: 11px 20px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.review-cancel {
+    background: #eeeeea;
+    color: #20392e;
+}
+
+.review-submit {
+    background: #e96843;
+    color: white;
+}
+
+.review-submit:hover {
+    background: #d65a37;
+}
+
+.review-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+
+/* ===================================
+   Mobile
+=================================== */
+
+@media (max-width: 600px) {
+
+    .order-item {
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .order-book-info h3 {
+        font-size: 14px;
+    }
+
+    .order-item-right {
+        align-items: flex-end;
+    }
+
+    .review-dialog {
+        padding: 22px;
+    }
+}
