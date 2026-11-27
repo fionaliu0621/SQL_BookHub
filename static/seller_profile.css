@@ -176,3 +176,17 @@
         height: 70px
     }
 }
+
+/* ---------- Back link (from a book to the seller profile and back) ---------- */
+
+.profile-back {
+    display: inline-block;
+    margin-bottom: 18px;
+    color: #20392e;
+    font-weight: 700;
+    text-decoration: none
+}
+
+.profile-back:hover {
+    text-decoration: underline
+}

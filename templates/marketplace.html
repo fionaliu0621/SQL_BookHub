@@ -232,7 +232,7 @@
           document.getElementById("accountLink").href = "/dashboard";
           document.getElementById("dashboardNav").hidden = false;
           document.getElementById("cartNav").hidden =
-            currentUser.role !== "BUYER";
+            !currentUser.roles.includes("BUYER");
         } catch (_) {
           /* Guest browsing remains available. */
         }
@@ -378,7 +378,10 @@
         );
         const sellerLink = document.getElementById("sellerProfileLink");
         sellerLink.style.display = book.seller_id ? "inline-block" : "none";
-        if (book.seller_id) sellerLink.href = "/seller/" + book.seller_id;
+        // Pass the book id along so the seller profile can link back to it.
+        if (book.seller_id)
+          sellerLink.href =
+            "/seller/" + book.seller_id + "?from_book=" + encodeURIComponent(book.id);
         const dialogCover = dialog.querySelector(".dialog-cover");
         dialogCover.replaceChildren();
         if (book.image_url) {
@@ -403,9 +406,9 @@
             location.assign("/login?next=/marketplace");
             return;
           }
-          if (currentUser.role !== "BUYER") {
+          if (!currentUser.roles.includes("BUYER")) {
             document.getElementById("cartFeedback").textContent =
-              "請使用買家帳號加入購物車。";
+              "請先到會員中心開通買家身分，才能加入購物車。";
             return;
           }
           const button = document.getElementById("addCartBtn");
@@ -468,6 +471,7 @@
           if (!Array.isArray(data)) throw new Error("Invalid response");
           allBooks = data;
           renderBooks();
+          openBookFromUrl();
         } catch (error) {
           bookCount.textContent = "載入失敗";
           marketMessage.hidden = false;
@@ -475,6 +479,19 @@
         }
       }
       collegeFilter.value = {{ preset_college|tojson }};
+
+      // Coming back from a seller profile: /marketplace?book=<id> reopens that book.
+      function openBookFromUrl() {
+        const bookId = new URLSearchParams(location.search).get("book");
+        if (!bookId) return;
+        const book = allBooks.find((b) => String(b.id) === bookId);
+        if (book) {
+          openDetails(book);
+        } else {
+          marketMessage.hidden = false;
+          marketMessage.textContent = "這本書已經售出或下架了，看看其他書吧。";
+        }
+      }
       searchInput.value = new URLSearchParams(location.search).get("q") || "";
       loadBooks();
     </script>

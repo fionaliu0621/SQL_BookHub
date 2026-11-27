@@ -25,11 +25,14 @@
                 <p class="intro">加入校園二手書市集，讓閱讀持續流動。</p>
                 <form id="registerForm">
 
-                    <label for="role">帳號類型</label><select id="role">
-                        <option value="BUYER">買家</option>
-                        <option value="SELLER">賣家</option>
-                    </select>
-                    <label for="name">姓名／暱稱</label><input id="name" type="text" autocomplete="name"
+                    <fieldset class="role-choices">
+                        <legend>帳號身分（可複選）</legend>
+                        <label>
+                            <input type="checkbox" name="roles" value="BUYER" checked>買家</label>
+                        <label>
+                            <input type="checkbox" name="roles" value="SELLER">賣家</label>
+                    </fieldset>
+                    <label for="name">姓名／暱稱</label><input id="name" type="text" autocomplete="name" maxlength="50"
                         placeholder="你的名字" required><label for="email">電子郵件</label><input id="email" type="email"
                         autocomplete="email" placeholder="you@example.com" required><label
                         for="password">密碼</label><input id="password" type="password" autocomplete="new-password"
@@ -42,7 +45,7 @@
             </div>
         </section>
     </main>
-    <script>document.getElementById('registerForm').addEventListener('submit', async e => { e.preventDefault(); const msg = document.getElementById('message'); const btn = e.currentTarget.querySelector('button'); msg.textContent = ''; btn.disabled = true; try { const response = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('name').value, email: document.getElementById('email').value, password: document.getElementById('password').value, role: document.getElementById('role').value }) }); const result = await response.json(); if (response.ok) { location.assign('/login?registered=1') } else { msg.textContent = result.error === 'Email already registered' ? '這個電子郵件已經註冊過了' : result.error === 'Password must be at least 8 characters' ? '密碼至少需要 8 個字元' : (result.error || '註冊失敗，請稍後再試。') } } catch { msg.textContent = '無法連線至伺服器，請稍後再試。' } finally { btn.disabled = false } });</script>
+    <script>document.getElementById('registerForm').addEventListener('submit', async e => { e.preventDefault(); const msg = document.getElementById('message'); const btn = e.currentTarget.querySelector('button'); msg.textContent = ''; const roles = [...document.querySelectorAll('input[name=roles]:checked')].map(c => c.value); if (!roles.length) { msg.textContent = '請至少選擇一種帳號身分（買家或賣家）'; return } btn.disabled = true; try { const response = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('name').value, email: document.getElementById('email').value, password: document.getElementById('password').value, roles }) }); const result = await response.json(); if (response.ok) { location.assign('/login?registered=1') } else { msg.textContent = result.error || '註冊失敗，請稍後再試。'; if (response.status === 409 && result.error && result.error.includes('名稱')) document.getElementById('name').focus() } } catch { msg.textContent = '無法連線至伺服器，請稍後再試。' } finally { btn.disabled = false } });</script>
 </body>
 
 </html>

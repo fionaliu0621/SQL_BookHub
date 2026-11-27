@@ -68,6 +68,50 @@ def ensure_schema():
 
 ensure_schema()
 
+# -------------------- ROLES --------------------
+# One account can hold several roles (BUYER and/or SELLER).
+# Roles are stored in the user_roles table (see migration_roles_unique_name.sql);
+# the legacy users.role column is no longer read.
+
+VALID_ROLES = ("BUYER", "SELLER")
+
+
+def get_user_roles(cur, user_id):
+    cur.execute(
+        "SELECT role FROM user_roles WHERE user_id = %s ORDER BY role",
+        (user_id,),
+    )
+    roles = [row["role"] for row in cur.fetchall()]
+
+    if not roles:
+        # Account registered by older code (no user_roles row yet):
+        # copy its role from the legacy users.role column, once.
+        cur.execute(
+            """
+            INSERT INTO user_roles (user_id, role)
+            SELECT id, role FROM users
+            WHERE id = %s AND role IN ('BUYER', 'SELLER')
+            ON CONFLICT (user_id, role) DO NOTHING
+            RETURNING role
+        """,
+            (user_id,),
+        )
+        roles = [row["role"] for row in cur.fetchall()]
+
+    return roles
+
+
+def current_roles():
+    roles = session.get("roles")
+    if roles is None and "role" in session:
+        # Session created before the roles change: fall back to the old value.
+        roles = [session["role"]]
+    return roles or []
+
+
+def has_role(role):
+    return role in current_roles()
+
 
 # -------------------- HOME --------------------
 
@@ -109,37 +153,78 @@ def register():
     name = str(data.get("name") or "").strip()
     email = str(data.get("email") or "").strip().lower()
     password = data.get("password")
-    role = data.get("role", "BUYER")
+
+    # New format: "roles": ["BUYER", "SELLER"]. Old format "role": "BUYER" still works.
+    roles = data.get("roles")
+    if roles is None:
+        roles = [data.get("role", "BUYER")]
 
     if not name or not email or not isinstance(password, str):
         return jsonify({"error": "請填寫所有必填欄位"}), 400
 
+    if len(name) > 50:
+        return jsonify({"error": "姓名／暱稱最多 50 個字元"}), 400
+
     if len(password) < 8:
         return jsonify({"error": "密碼至少需要 8 個字元"}), 400
 
-    if role not in ("BUYER", "SELLER"):
-        return jsonify({"error": "帳號類型錯誤"}), 400
+    if (
+        not isinstance(roles, list)
+        or not roles
+        or any(r not in VALID_ROLES for r in roles)
+    ):
+        return jsonify({"error": "請至少選擇一種帳號身分（買家或賣家）"}), 400
 
+    roles = sorted(set(roles))
     password_hash = generate_password_hash(password)
 
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                # Check first so the user gets a clear message.
+                # The UNIQUE indexes below still protect against race conditions.
+                cur.execute(
+                    "SELECT 1 FROM users WHERE LOWER(name) = LOWER(%s)", (name,)
+                )
+                if cur.fetchone():
+                    return jsonify({"error": "這個名稱已經有人使用，請換一個"}), 409
+
+                cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
+                if cur.fetchone():
+                    return jsonify({"error": "電子郵件已被註冊"}), 409
+
+                # users.role is legacy; it is still filled in so older
+                # constraints on that column keep working.
                 cur.execute(
                     """
                     INSERT INTO users
                         (name, email, password_hash, role)
                     VALUES (%s, %s, %s, %s)
-                    RETURNING id, name, email, role
+                    RETURNING id, name, email
                 """,
-                    (name, email, password_hash, role),
+                    (
+                        name,
+                        email,
+                        password_hash,
+                        "SELLER" if "SELLER" in roles else "BUYER",
+                    ),
                 )
 
                 user = cur.fetchone()
 
+                for role in roles:
+                    cur.execute(
+                        "INSERT INTO user_roles (user_id, role) VALUES (%s, %s)",
+                        (user["id"], role),
+                    )
+
+        user["roles"] = roles
         return jsonify({"message": "註冊成功", "user": user}), 201
 
-    except UniqueViolation:
+    except UniqueViolation as error:
+        constraint = (error.diag.constraint_name or "").lower()
+        if "name" in constraint:
+            return jsonify({"error": "這個名稱已經有人使用，請換一個"}), 409
         return jsonify({"error": "電子郵件已被註冊"}), 409
 
 
@@ -163,7 +248,7 @@ def login():
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, name, email, password_hash, role
+                SELECT id, name, email, password_hash
                 FROM users
                 WHERE email = %s
             """,
@@ -172,13 +257,15 @@ def login():
 
             user = cur.fetchone()
 
-    if not user or not check_password_hash(user["password_hash"], password):
-        return jsonify({"error": "電子郵件或密碼錯誤"}), 401
+            if not user or not check_password_hash(user["password_hash"], password):
+                return jsonify({"error": "電子郵件或密碼錯誤"}), 401
+
+            roles = get_user_roles(cur, user["id"])
 
     session.clear()
     session["user_id"] = user["id"]
     session["user_name"] = user["name"]
-    session["role"] = user["role"]
+    session["roles"] = roles
 
     return jsonify(
         {
@@ -187,7 +274,7 @@ def login():
                 "id": user["id"],
                 "name": user["name"],
                 "email": user["email"],
-                "role": user["role"],
+                "roles": roles,
             },
         }
     )
@@ -205,9 +292,40 @@ def me():
         {
             "id": session["user_id"],
             "name": session["user_name"],
-            "role": session["role"],
+            "roles": current_roles(),
         }
     )
+
+
+# -------------------- ADD A ROLE (e.g. buyer becomes seller) --------------------
+
+
+@app.route("/api/me/roles", methods=["POST"])
+def add_my_role():
+    if "user_id" not in session:
+        return jsonify({"error": "請先登入"}), 401
+
+    data = request.get_json(silent=True)
+    role = data.get("role") if isinstance(data, dict) else None
+
+    if role not in VALID_ROLES:
+        return jsonify({"error": "身分類型錯誤"}), 400
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            get_user_roles(cur, session["user_id"])  # keeps an older account's existing role
+            cur.execute(
+                """
+                INSERT INTO user_roles (user_id, role) VALUES (%s, %s)
+                ON CONFLICT (user_id, role) DO NOTHING
+            """,
+                (session["user_id"], role),
+            )
+            roles = get_user_roles(cur, session["user_id"])
+
+    session["roles"] = roles
+    label = "賣家" if role == "SELLER" else "買家"
+    return jsonify({"message": f"已開通{label}身分", "roles": roles})
 
 
 # -------------------- LOGOUT --------------------
@@ -241,7 +359,7 @@ def dashboard():
         return redirect(url_for("login_page"))
 
     return render_template(
-        "dashboard.html", name=session["user_name"], role=session["role"]
+        "dashboard.html", name=session["user_name"], roles=current_roles()
     )
 
 
@@ -253,7 +371,7 @@ def sell_page():
     if "user_id" not in session:
         return redirect(url_for("login_page"))
 
-    if session.get("role") != "SELLER":
+    if not has_role("SELLER"):
         return "只有賣家帳號可以上架書籍", 403
 
     return render_template("sell.html", price_limits=PRICE_LIMITS)
@@ -318,7 +436,7 @@ def create_book():
         return jsonify({"error": "請先登入"}), 401
 
     # 2. Only sellers can upload books
-    if session.get("role") != "SELLER":
+    if not has_role("SELLER"):
         return jsonify({"error": "只有賣家可以上架書籍"}), 403
 
     # 3. Get form data
@@ -459,7 +577,7 @@ def create_book():
 def buyer_required():
     if "user_id" not in session:
         return jsonify({"error": "請先登入"}), 401
-    if session.get("role") != "BUYER":
+    if not has_role("BUYER"):
         return jsonify({"error": "只有買家可以使用購物車"}), 403
     return None
 
@@ -468,7 +586,7 @@ def buyer_required():
 def cart_page():
     if "user_id" not in session:
         return redirect(url_for("login_page", next="/cart"))
-    if session.get("role") != "BUYER":
+    if not has_role("BUYER"):
         return redirect(url_for("marketplace_page"))
     return render_template("cart.html")
 
@@ -578,7 +696,7 @@ def remove_from_cart(item_id):
 def orders_page():
     if "user_id" not in session:
         return redirect(url_for("login_page"))
-    if session.get("role") != "BUYER":
+    if not has_role("BUYER"):
         return redirect(url_for("dashboard"))
     return render_template("orders.html")
 
@@ -833,7 +951,7 @@ def checkout():
 def seller_required():
     if "user_id" not in session:
         return jsonify({"error": "請先登入"}), 401
-    if session.get("role") != "SELLER":
+    if not has_role("SELLER"):
         return jsonify({"error": "只有賣家可以管理書籍"}), 403
     return None
 
@@ -842,7 +960,7 @@ def seller_required():
 def seller_page():
     if "user_id" not in session:
         return redirect(url_for("login_page"))
-    if session.get("role") != "SELLER":
+    if not has_role("SELLER"):
         return redirect(url_for("dashboard"))
     return render_template("seller.html")
 
@@ -1043,8 +1161,16 @@ def public_seller_api(seller_id):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, name, created_at, seller_bio
-                FROM users WHERE id = %s AND role = 'SELLER'
+                SELECT u.id, u.name, u.created_at, u.seller_bio
+                FROM users u
+                WHERE u.id = %s
+                  AND (
+                    EXISTS (SELECT 1 FROM user_roles ur
+                            WHERE ur.user_id = u.id AND ur.role = 'SELLER')
+                    -- older account with no user_roles rows yet
+                    OR (u.role = 'SELLER' AND NOT EXISTS (
+                            SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id))
+                  )
             """,
                 (seller_id,),
             )

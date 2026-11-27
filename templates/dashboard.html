@@ -69,7 +69,7 @@
             <!-- BUYER MENU -->
             <!-- ========================= -->
 
-            {% if role == 'BUYER' %}
+            {% if 'BUYER' in roles %}
 
                 <a href="/cart">
                     ▣　我的購物車
@@ -94,7 +94,7 @@
             <!-- SELLER MENU -->
             <!-- ========================= -->
 
-            {% if role == 'SELLER' %}
+            {% if 'SELLER' in roles %}
 
                 <a href="/seller">
                     ▤　賣家管理中心
@@ -146,12 +146,29 @@
                     </span>
 
                     <h2>
-                        {{ '賣家帳號' if role == 'SELLER' else '買家帳號' }}
+                        {% if 'BUYER' in roles and 'SELLER' in roles %}
+                            買家＋賣家帳號
+                        {% elif 'SELLER' in roles %}
+                            賣家帳號
+                        {% else %}
+                            買家帳號
+                        {% endif %}
                     </h2>
 
                     <p>
                         你已成功登入，可以開始探索二手書市集。
                     </p>
+
+                    {% if 'SELLER' not in roles %}
+                        <button type="button" class="btn btn-green role-upgrade" data-role="SELLER">
+                            我也想賣書，開通賣家身分 ↗
+                        </button>
+                    {% elif 'BUYER' not in roles %}
+                        <button type="button" class="btn btn-green role-upgrade" data-role="BUYER">
+                            我也想買書，開通買家身分 ↗
+                        </button>
+                    {% endif %}
+                    <p class="role-upgrade-message" id="roleMessage" role="status"></p>
 
                 </div>
 
@@ -188,7 +205,7 @@
                 <!-- BUYER ACTIONS -->
                 <!-- ========================= -->
 
-                {% if role == 'BUYER' %}
+                {% if 'BUYER' in roles %}
 
                     <!-- My Cart -->
 
@@ -226,7 +243,7 @@
                 <!-- SELLER ACTIONS -->
                 <!-- ========================= -->
 
-                {% if role == 'SELLER' %}
+                {% if 'SELLER' in roles %}
 
                     <!-- Seller Management -->
 
@@ -289,6 +306,29 @@
     <!-- ========================= -->
 
     <script>
+
+        // Add the missing role (buyer <-> seller) to this account
+
+        document.querySelectorAll(".role-upgrade").forEach((button) => {
+            button.addEventListener("click", async () => {
+                const message = document.getElementById("roleMessage");
+                button.disabled = true;
+                try {
+                    const response = await fetch("/api/me/roles", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ role: button.dataset.role }),
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || "開通失敗");
+                    message.textContent = result.message;
+                    window.location.reload();
+                } catch (error) {
+                    message.textContent = error.message || "連線失敗，請重試。";
+                    button.disabled = false;
+                }
+            });
+        });
 
         // Logout
 

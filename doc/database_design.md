@@ -68,16 +68,38 @@ Foreign Key 用來建立不同資料表之間的關聯。
 | 欄位 | 說明 |
 |---|---|
 | `id` | 使用者唯一編號（PK） |
-| `name` | 使用者姓名 |
+| `name` | 使用者姓名（不分大小寫，不可重複） |
 | `email` | 電子郵件，不可重複 |
 | `password_hash` | 經過雜湊處理的密碼 |
-| `role` | 使用者身分（BUYER / SELLER） |
+| `role` | （舊欄位，已改用 `user_roles`，程式不再讀取） |
 | `created_at` | 帳號建立時間 |
 | `seller_bio` | 賣家個人介紹 |
 
-BookHub 沒有為買家和賣家分別建立獨立的會員資料表，而是透過 `role` 欄位區分使用者角色。
+BookHub 沒有為買家和賣家分別建立獨立的會員資料表，而是透過角色表 `user_roles` 區分使用者角色。
 
 這樣可以簡化會員管理，也避免重複設計登入、註冊及密碼驗證功能。
+
+**使用者名稱唯一**：`users` 建有唯一索引 `users_name_unique_idx ON users (LOWER(name))`，`Amy` 與 `amy` 視為同一個名稱。註冊 API 會先檢查名稱與電子郵件，重複時回傳清楚的錯誤訊息。
+
+#### 角色表：User Roles
+
+一個帳號可以同時是買家和賣家，因此角色改存在獨立的 `user_roles` 表（一對多：一位使用者可有多個角色）。
+
+| 欄位 | 說明 |
+|---|---|
+| `user_id` | 使用者編號（FK → `users.id`） |
+| `role` | `BUYER` 或 `SELLER` |
+| `created_at` | 開通該身分的時間 |
+
+主鍵為 `(user_id, role)`，同一個身分不會重複。例如：
+
+| user_id | role |
+|---|---|
+| 1 | BUYER |
+| 2 | SELLER |
+| 2 | BUYER |
+
+使用者 2 同時是賣家和買家。註冊時可複選身分，之後也可以在會員中心開通另一個身分。
 
 ### Table 2：Books（書籍資料表）
 
