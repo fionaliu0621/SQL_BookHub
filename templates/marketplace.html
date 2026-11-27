@@ -20,7 +20,7 @@
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='bookkub-fixes.css') }}"
+      href="{{ url_for('static', filename='bookhub-fixes.css') }}"
     />
   </head>
   <body class="market-page">
@@ -118,8 +118,17 @@
               <option value="其他">其他／通識課程</option>
             </select>
           </label>
+          <label class="market-filter">
+            <span>每頁顯示</span>
+            <select id="pageSizeSelect" aria-label="每頁顯示幾本">
+              <option value="12">12 本</option>
+              <option value="24">24 本</option>
+              <option value="48">48 本</option>
+            </select>
+          </label>
         </div>
         <div id="bookGrid" class="market-grid" aria-live="polite"></div>
+        <nav id="pagination" class="market-pagination" aria-label="分頁" hidden></nav>
         <div
           id="marketMessage"
           class="market-message"
@@ -193,6 +202,13 @@
       const formatPrice = (value) =>
         "NT$ " +
         Number(value).toLocaleString("zh-TW", { maximumFractionDigits: 2 });
+      const pageSizeSelect = document.getElementById("pageSizeSelect");
+      const pagination = document.getElementById("pagination");
+      let currentPage = 1;
+      try {
+        const saved = localStorage.getItem("bookhub.pageSize");
+        if (["12", "24", "48"].includes(saved)) pageSizeSelect.value = saved;
+      } catch (_) {}
       let allBooks = [];
       let currentBook = null;
       let currentUser = null;
@@ -234,7 +250,15 @@
           return matchSearch && matchCondition && matchCollege;
         });
 
-     
+        const pageSize = Number(pageSizeSelect.value);
+        const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        currentPage = Math.min(currentPage, totalPages);
+        const pageBooks = filtered.slice(
+          (currentPage - 1) * pageSize,
+          currentPage * pageSize,
+        );
+        renderPagination(totalPages);
+
         bookGrid.replaceChildren();
         bookCount.textContent = `共 ${filtered.length} 本書籍`;
         marketMessage.hidden = filtered.length !== 0;
@@ -244,7 +268,7 @@
             ? "找不到符合條件的書籍，試試其他關鍵字吧。"
             : "目前還沒有上架的書籍，歡迎成為第一位賣家！";
 
-        for (const book of filtered) {
+        for (const book of pageBooks) {
           const card = document.createElement("button");
           card.type = "button";
           card.className = "market-card";
@@ -289,6 +313,37 @@
           card.addEventListener("click", () => openDetails(book));
           bookGrid.append(card);
         }
+      }
+
+      function renderPagination(totalPages) {
+        pagination.replaceChildren();
+        pagination.hidden = totalPages <= 1;
+        if (totalPages <= 1) return;
+        const addButton = (label, page, disabled, current) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          button.disabled = disabled;
+          if (current) {
+            button.className = "is-current";
+            button.setAttribute("aria-current", "page");
+          }
+          button.addEventListener("click", () => goToPage(page));
+          pagination.append(button);
+        };
+        addButton("← 上一頁", currentPage - 1, currentPage === 1);
+        for (let page = 1; page <= totalPages; page++) {
+          addButton(String(page), page, false, page === currentPage);
+        }
+        addButton("下一頁 →", currentPage + 1, currentPage === totalPages);
+      }
+
+      function goToPage(page) {
+        currentPage = page;
+        renderBooks();
+        document
+          .getElementById("market-title")
+          .scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
       function openDetails(book) {
@@ -366,9 +421,20 @@
       dialog.addEventListener("click", (event) => {
         if (event.target === dialog) dialog.close();
       });
-      searchInput.addEventListener("input", renderBooks);
-      conditionFilter.addEventListener("change", renderBooks);
-      collegeFilter.addEventListener("change", renderBooks);
+      // Changing a filter or page size starts again from page 1.
+      const resetAndRender = () => {
+        currentPage = 1;
+        renderBooks();
+      };
+      searchInput.addEventListener("input", resetAndRender);
+      conditionFilter.addEventListener("change", resetAndRender);
+      collegeFilter.addEventListener("change", resetAndRender);
+      pageSizeSelect.addEventListener("change", () => {
+        try {
+          localStorage.setItem("bookhub.pageSize", pageSizeSelect.value);
+        } catch (_) {}
+        resetAndRender();
+      });
       async function loadBooks() {
         marketMessage.hidden = false;
         marketMessage.textContent = "正在載入書籍…";

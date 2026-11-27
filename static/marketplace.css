@@ -745,3 +745,39 @@
         flex: 1 1 140px;
     }
 }
+/* Pagination */
+.market-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: 36px 0 0
+}
+
+.market-pagination[hidden] {
+    display: none
+}
+
+.market-pagination button {
+    min-width: 40px;
+    padding: 9px 14px;
+    border: 1px solid #d5d2c8;
+    border-radius: 7px;
+    background: #fff;
+    color: #20392e;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer
+}
+
+.market-pagination button.is-current {
+    background: #20392e;
+    border-color: #20392e;
+    color: #fff
+}
+
+.market-pagination button:disabled {
+    opacity: .4;
+    cursor: not-allowed
+}

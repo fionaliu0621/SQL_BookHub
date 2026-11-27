@@ -1,4 +1,5 @@
 import os
+from datetime import date
 from decimal import Decimal, InvalidOperation
 
 import psycopg
@@ -554,6 +555,9 @@ def get_orders():
                     o.id AS order_id,
                     o.total_amount,
                     o.created_at,
+                    o.payment_method,
+                    o.payment_status,
+                    o.card_last4,
 
                     i.id AS order_item_id,
                     i.book_id,
@@ -605,6 +609,9 @@ def get_orders():
                 "id": order_id,
                 "total": str(row["total_amount"]),
                 "created_at": row["created_at"].isoformat(),
+                "payment_method": row["payment_method"],
+                "payment_status": row["payment_status"],
+                "card_last4": row["card_last4"],
                 "items": [],
             }
 
@@ -624,11 +631,69 @@ def get_orders():
     return jsonify({"orders": list(orders_by_id.values())})
 
 
+PAYMENT_METHODS = ("COD", "CARD")
+# Simulated card that is always declined, so the failure path can be demoed.
+DECLINED_TEST_CARD = "4000000000000002"
+
+
+def validate_simulated_card(card):
+    """Check card fields for the simulated payment. Returns (last4, error)."""
+    if not isinstance(card, dict):
+        return None, "請填寫信用卡資料"
+
+    number = "".join(str(card.get("number") or "").split())
+    expiry = str(card.get("expiry") or "").strip()
+    cvv = str(card.get("cvv") or "").strip()
+    holder = str(card.get("holder") or "").strip()
+
+    if not number.isdigit() or len(number) != 16:
+        return None, "卡號需為 16 位數字"
+    if not holder or len(holder) > 100:
+        return None, "請填寫持卡人姓名"
+    if not cvv.isdigit() or len(cvv) != 3:
+        return None, "安全碼需為 3 位數字"
+
+    try:
+        month_text, year_text = expiry.split("/")
+        month, year = int(month_text), 2000 + int(year_text)
+        if len(year_text) != 2 or not 1 <= month <= 12:
+            raise ValueError()
+    except ValueError:
+        return None, "到期日格式需為 MM/YY"
+
+    today = date.today()
+    if (year, month) < (today.year, today.month):
+        return None, "信用卡已過期"
+
+    if number == DECLINED_TEST_CARD:
+        return None, "付款失敗：發卡銀行拒絕交易（測試卡）"
+
+    return number[-4:], None
+
+
 @app.route("/api/checkout", methods=["POST"])
 def checkout():
     denied = buyer_required()
     if denied:
         return denied
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "資料格式錯誤"}), 400
+
+    payment_method = data.get("payment_method")
+    if payment_method not in PAYMENT_METHODS:
+        return jsonify({"error": "請選擇付款方式"}), 400
+
+    card_last4 = None
+    if payment_method == "CARD":
+        # Card details are only checked here; nothing except the last 4
+        # digits is stored.
+        card_last4, card_error = validate_simulated_card(data.get("card"))
+        if card_error:
+            return jsonify({"error": card_error}), 402 if "付款失敗" in card_error else 400
+
+    payment_status = "PAID" if payment_method == "CARD" else "PENDING"
 
     # One transaction: lock buyer, lock books, create order, mark SOLD, clear cart.
     # The row locks prevent concurrent buyers from buying the same book.
@@ -673,10 +738,11 @@ def checkout():
             total = sum((b["price"] for b in books), Decimal("0"))
             cur.execute(
                 """
-                INSERT INTO checkout_orders (buyer_id, total_amount)
-                VALUES (%s, %s) RETURNING id
+                INSERT INTO checkout_orders
+                    (buyer_id, total_amount, payment_method, payment_status, card_last4)
+                VALUES (%s, %s, %s, %s, %s) RETURNING id
             """,
-                (session["user_id"], total),
+                (session["user_id"], total, payment_method, payment_status, card_last4),
             )
             order_id = cur.fetchone()["id"]
             for book in books:
@@ -704,9 +770,13 @@ def checkout():
     return (
         jsonify(
             {
-                "message": "訂單建立成功（模擬結帳，無實際付款）",
+                "message": "付款成功，訂單已建立"
+                if payment_method == "CARD"
+                else "訂單已建立，請於取貨時付款",
                 "order_id": order_id,
                 "total": str(total),
+                "payment_method": payment_method,
+                "payment_status": payment_status,
             }
         ),
         201,
@@ -846,6 +916,8 @@ def seller_sales():
                 SELECT
                     o.id AS order_id,
                     o.created_at AS order_date,
+                    o.payment_method,
+                    o.payment_status,
 
                     o.buyer_id AS buyer_id,
                     u.name AS buyer_name,
@@ -887,6 +959,8 @@ def seller_sales():
             {
                 "order_id": row["order_id"],
                 "order_date": row["order_date"].isoformat(),
+                "payment_method": row["payment_method"],
+                "payment_status": row["payment_status"],
                 "buyer_id": row["buyer_id"],
                 "buyer_name": row["buyer_name"],
                 "order_item_id": row["order_item_id"],

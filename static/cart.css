@@ -217,7 +217,16 @@
     color: white;
     font-weight: 700;
     font-size: 14px;
-    opacity: .7;
+    cursor: pointer;
+    transition: background .15s
+}
+
+.cart-summary button:hover:not(:disabled) {
+    background: #d4552f
+}
+
+.cart-summary button:disabled {
+    opacity: .5;
     cursor: not-allowed
 }
 
@@ -272,6 +281,88 @@
 
 .cart-page #cartMessage {
     color: #c15c3f
+}
+
+/* Payment method + simulated card form */
+.pay-methods {
+    border: 0;
+    padding: 0;
+    margin: 0 0 18px
+}
+
+.pay-methods legend {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 10px
+}
+
+.pay-methods label {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 11px 12px;
+    border: 1px solid #4b6155;
+    border-radius: 7px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    cursor: pointer
+}
+
+.pay-methods label:has(input:checked) {
+    border-color: #e96843;
+    background: rgba(233, 104, 67, .12)
+}
+
+.pay-methods small {
+    margin-left: auto;
+    font-size: 11px;
+    color: #b9c4bb
+}
+
+.card-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px
+}
+
+.card-form[hidden] {
+    display: none
+}
+
+.card-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12px;
+    color: #d0d7cf
+}
+
+.card-form input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid #4b6155;
+    border-radius: 6px;
+    padding: 10px;
+    background: #f7f5ef;
+    color: #20392e;
+    font: inherit;
+    font-size: 14px
+}
+
+.card-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px
+}
+
+.card-row label {
+    min-width: 0
+}
+
+.card-form small {
+    font-size: 11px;
+    color: #b9c4bb
 }
 
 @media(max-width:760px) {

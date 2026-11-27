@@ -148,7 +148,7 @@
           i.loading = "lazy";
           d.append(i);
         } else {
-          d.textContent = "BOOKKUB ✳";
+          d.textContent = "BOOKHUB ✳";
         }
         return d;
       }
@@ -285,7 +285,8 @@ async function loadSales() {
             '買家 ID',
             '買家名稱',
             '書籍名稱',
-            '成交金額'
+            '成交金額',
+            '付款方式'
         ];
 
         for (const header of headers) {
@@ -312,7 +313,9 @@ async function loadSales() {
                 sale.buyer_id,
                 sale.buyer_name,
                 sale.book_title,
-                money(sale.price)
+                money(sale.price),
+                (sale.payment_method === 'CARD' ? '信用卡' : '貨到付款') +
+                    (sale.payment_status === 'PAID' ? '・已付款' : '・待付款')
             ];
 
             for (const value of values) {

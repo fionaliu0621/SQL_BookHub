@@ -37,7 +37,7 @@
         <a href="/marketplace" class="cart-back">← 繼續逛逛</a>
       </div>
       <p id="successMessage" class="order-success" hidden>
-        訂單建立成功！這是模擬結帳，沒有實際扣款。
+        訂單建立成功！（模擬金流，沒有實際扣款）
       </p>
       <div id="ordersList" class="orders-list" aria-live="polite">
         正在載入訂單…
@@ -155,7 +155,7 @@ if (success) {
     message.hidden = false;
 
     message.textContent =
-        `訂單 #${success} 建立成功！這是模擬結帳，沒有實際扣款。`;
+        `訂單 #${success} 建立成功！（模擬金流，沒有實際扣款）`;
 }
 
 
@@ -244,6 +244,18 @@ async function loadOrders() {
             heading.append(orderTitle, date);
 
             article.append(heading);
+
+            // Payment method + status
+            const paid = order.payment_status === 'PAID';
+            const payText = order.payment_method === 'CARD'
+                ? '信用卡' + (order.card_last4 ? '（末四碼 ' + order.card_last4 + '）' : '')
+                : '貨到付款';
+            const payment = createElement(
+                'p',
+                'order-payment ' + (paid ? 'is-paid' : 'is-pending'),
+                payText + ' · ' + (paid ? '已付款' : '待付款（取貨時付款）')
+            );
+            article.append(payment);
 
 
             // ============================

@@ -16,7 +16,7 @@
   <body class="cart-page">
     <header class="cart-header">
       <a class="cart-logo" href="/"
-        >Book<span>Kub</span><small>CAMPUS BOOK MARKETPLACE</small></a
+        >Book<span>Hub</span><small>CAMPUS BOOK MARKETPLACE</small></a
       >
       <nav>
         <!-- <a href="/">首頁</a>-->
@@ -51,8 +51,51 @@
           <div class="cart-summary-line cart-total">
             <span>商品總計</span><strong id="summaryTotal">NT$ 0</strong>
           </div>
+          <fieldset class="pay-methods">
+            <legend>付款方式</legend>
+            <label
+              ><input type="radio" name="payMethod" value="COD" checked />
+              貨到付款<small>面交取書時付款</small></label
+            >
+            <label
+              ><input type="radio" name="payMethod" value="CARD" />
+              信用卡<small>模擬刷卡，不會實際扣款</small></label
+            >
+          </fieldset>
+          <div id="cardForm" class="card-form" hidden>
+            <label
+              >卡號<input
+                id="cardNumber"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="4242 4242 4242 4242"
+                maxlength="19"
+            /></label>
+            <label
+              >持卡人姓名<input id="cardHolder" autocomplete="off" maxlength="100"
+            /></label>
+            <div class="card-row">
+              <label
+                >到期日<input
+                  id="cardExpiry"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="MM/YY"
+                  maxlength="5"
+              /></label>
+              <label
+                >安全碼<input
+                  id="cardCvv"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="123"
+                  maxlength="3"
+              /></label>
+            </div>
+            <small>測試用：4000 0000 0000 0002 會模擬付款失敗。</small>
+          </div>
           <button type="button" id="checkoutBtn" disabled>確認結帳 ↗</button>
-          <p>模擬結帳，不會進行實際付款。結帳後書籍將標記為已售出。</p>
+          <p>這是模擬金流，不會實際扣款，也不會儲存完整卡號。結帳後書籍將標記為已售出。</p>
           <a href="/orders" class="cart-back">查看我的訂單 ↗</a>
         </aside>
       </div>
@@ -112,7 +155,7 @@
               img.alt = item.title || "書籍照片";
               cover.append(img);
             } else {
-              cover.textContent = "BOOKKUB ✳";
+              cover.textContent = "BOOKHUB ✳";
             }
             const detail = document.createElement("div");
             detail.className = "cart-item-detail";
@@ -153,12 +196,65 @@
           message.textContent = error.message;
         }
       }
+      const cardForm = document.getElementById("cardForm");
+      const cardNumber = document.getElementById("cardNumber");
+      const cardExpiry = document.getElementById("cardExpiry");
+      const payMethod = () =>
+        document.querySelector('input[name="payMethod"]:checked').value;
+      document.querySelectorAll('input[name="payMethod"]').forEach((radio) =>
+        radio.addEventListener("change", () => {
+          cardForm.hidden = payMethod() !== "CARD";
+          checkoutBtn.textContent =
+            payMethod() === "CARD" ? "確認付款 ↗" : "確認結帳 ↗";
+        }),
+      );
+      // Format card number as groups of 4 and expiry as MM/YY while typing.
+      cardNumber.addEventListener("input", () => {
+        const digits = cardNumber.value.replace(/\D/g, "").slice(0, 16);
+        cardNumber.value = digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+      });
+      cardExpiry.addEventListener("input", () => {
+        const digits = cardExpiry.value.replace(/\D/g, "").slice(0, 4);
+        cardExpiry.value =
+          digits.length > 2 ? digits.slice(0, 2) + "/" + digits.slice(2) : digits;
+      });
+      function readCard() {
+        const card = {
+          number: cardNumber.value.replace(/\s/g, ""),
+          holder: document.getElementById("cardHolder").value.trim(),
+          expiry: cardExpiry.value.trim(),
+          cvv: document.getElementById("cardCvv").value.trim(),
+        };
+        if (!/^\d{16}$/.test(card.number)) throw new Error("卡號需為 16 位數字");
+        if (!card.holder) throw new Error("請填寫持卡人姓名");
+        if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(card.expiry))
+          throw new Error("到期日格式需為 MM/YY");
+        if (!/^\d{3}$/.test(card.cvv)) throw new Error("安全碼需為 3 位數字");
+        return card;
+      }
       checkoutBtn.addEventListener("click", async () => {
-        if (!confirm("確認建立模擬訂單？結帳後書籍將標記為已售出。")) return;
-        checkoutBtn.disabled = true;
-        message.textContent = "正在建立訂單…";
+        const method = payMethod();
+        let body;
         try {
-          const r = await fetch("/api/checkout", { method: "POST" });
+          body = { payment_method: method };
+          if (method === "CARD") body.card = readCard();
+        } catch (e) {
+          message.textContent = e.message;
+          return;
+        }
+        const prompt =
+          method === "CARD"
+            ? "確認以信用卡付款？（模擬付款，不會實際扣款）"
+            : "確認以貨到付款下單？";
+        if (!confirm(prompt)) return;
+        checkoutBtn.disabled = true;
+        message.textContent = method === "CARD" ? "付款處理中…" : "正在建立訂單…";
+        try {
+          const r = await fetch("/api/checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
           const raw = await r.text();
           let data;
           try {
