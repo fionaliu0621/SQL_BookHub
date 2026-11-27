@@ -8,6 +8,10 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
     />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='college.css') }}"
+    />
   </head>
   <body>
     <header class="site-header">
@@ -54,6 +58,14 @@
           </div>
           <div class="sticker">好書<br />接力中 ↗</div>
         </div>
+      </section>
+      <section class="college-section" aria-labelledby="college-title">
+        <h2 id="college-title">依學院找書</h2>
+        <nav class="college-chips" aria-label="學院分類">
+          {% for c in colleges %}
+          <a class="college-chip" href="{{ url_for('college_page', college_name=c) }}">{{ c }}</a>
+          {% endfor %}
+        </nav>
       </section>
     </main>
     <footer class="footer">

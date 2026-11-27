@@ -1,0 +1,43 @@
+/* College links (home page + marketplace). New file: no conflicts with other CSS. */
+.college-section {
+    padding: 48px 9% 56px;
+    border-bottom: 1px solid var(--line, #deddd4)
+}
+
+.college-section h2 {
+    margin: 0 0 18px;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--green, #20392e)
+}
+
+.college-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 22px
+}
+
+.college-chip {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid #d5d2c8;
+    border-radius: 999px;
+    background: #fffefa;
+    color: #20392e;
+    font-size: 13px;
+    font-weight: 700;
+    transition: background .15s, color .15s
+}
+
+.college-chip:hover,
+.college-chip.active {
+    background: #20392e;
+    border-color: #20392e;
+    color: #fff
+}
+
+/* Marketplace / college page: give the chips room below the heading */
+.market-content .college-chips {
+    margin-top: 24px
+}
