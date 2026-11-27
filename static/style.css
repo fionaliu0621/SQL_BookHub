@@ -1011,3 +1011,47 @@ button {
         animation: none;
     }
 }
+
+/* ---------- Register: buyer / seller checkboxes (Bug #2) ---------- */
+
+.role-choices {
+    border: 0;
+    padding: 0;
+    margin: 19px 0 0
+}
+
+.role-choices legend {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 0;
+    margin-bottom: 8px
+}
+
+.auth-form .role-choices label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 22px 0 0;
+    font-weight: 400;
+    font-size: 14px;
+    cursor: pointer
+}
+
+.auth-form .role-choices input {
+    width: auto;
+    padding: 0;
+    margin: 0;
+    accent-color: var(--green)
+}
+
+/* ---------- Dashboard: add a missing role (Bug #2) ---------- */
+
+.role-upgrade {
+    margin-top: 14px
+}
+
+.role-upgrade-message {
+    min-height: 18px;
+    font-size: 13px;
+    margin: 8px 0 0
+}
