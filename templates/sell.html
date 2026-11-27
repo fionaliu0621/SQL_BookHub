@@ -6,6 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>我要賣書 — BookHub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Price is over the limit for the chosen condition */
+        #price.price-over {
+            border-color: #d52222 !important;
+            background: #fdecec !important;
+            color: #b4412d !important;
+            box-shadow: 0 0 0 2px rgba(213, 34, 34, .25);
+        }
+        #priceHint.price-over-text {
+            color: #d52222;
+            font-weight: 700;
+        }
+    </style>
 </head>
 <body>
 
@@ -70,6 +83,7 @@
                     <input id="price" type="number" min="0.01"
                            max="99999999.99" step="0.01"
                            placeholder="350" required>
+                    <small id="priceHint">請先選擇書況</small>
                 </div>
 
                 <div class="form-field">
@@ -82,6 +96,12 @@
                         <option value="FAIR">普通</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="form-field">
+                <label for="conditionNote">書況說明（選填）</label>
+                <textarea id="conditionNote" maxlength="500" rows="3"
+                          placeholder="例如：有少量螢光筆劃記，無缺頁"></textarea>
             </div>
 
       <div class="form-field">
@@ -108,6 +128,33 @@ const form = document.getElementById("sellForm");
 const button = document.getElementById("submitBtn");
 const message = document.getElementById("message");
 
+const PRICE_LIMITS = {{ price_limits|tojson }};
+const priceInput = document.getElementById("price");
+const conditionSelect = document.getElementById("condition");
+const priceHint = document.getElementById("priceHint");
+
+function updateLimit() {
+    const limit = PRICE_LIMITS[conditionSelect.value];
+    const over = Boolean(limit) && Number(priceInput.value) > limit;
+
+    priceInput.max = limit || 99999999.99;
+    priceInput.classList.toggle("price-over", over);
+    priceHint.classList.toggle("price-over-text", over);
+    priceInput.setCustomValidity(
+        over ? `此書況售價上限為 NT$${limit}` : ""
+    );
+
+    if (!limit) {
+        priceHint.textContent = "請先選擇書況";
+    } else if (over) {
+        priceHint.textContent = `超過上限！此書況最高可售 NT$${limit}`;
+    } else {
+        priceHint.textContent = `此書況最高可售 NT$${limit}`;
+    }
+}
+conditionSelect.addEventListener("change", updateLimit);
+priceInput.addEventListener("input", updateLimit);
+
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
     button.disabled = true;
@@ -122,11 +169,17 @@ form.addEventListener("submit", async (event) => {
             throw new Error("圖片不可超過 5MB");
         }
 
+        const limit = PRICE_LIMITS[conditionSelect.value];
+        if (Number(priceInput.value) > limit) {
+            throw new Error(`此書況售價上限為 NT$${limit}`);
+        }
+
         const data = new FormData();
         data.append("title", document.getElementById("title").value.trim());
         data.append("price", document.getElementById("price").value);
         data.append("condition", document.getElementById("condition").value);
         data.append("college", document.getElementById("college").value);
+        data.append("condition_note", document.getElementById("conditionNote").value.trim());
         data.append("image", file);
 
         const response = await fetch("/api/books", {
@@ -142,6 +195,7 @@ form.addEventListener("submit", async (event) => {
         message.style.color = "#276647";
         message.textContent = "上架成功！書籍編號：" + result.book_id;
         form.reset();
+        updateLimit();
     } catch (error) {
         message.style.color = "#b4412d";
         message.textContent = error.message || "無法連線到伺服器，請稍後再試";

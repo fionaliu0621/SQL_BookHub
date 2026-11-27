@@ -29,7 +29,8 @@ UPLOAD_FOLDER = Path(app.root_path) / "static" / "uploads"
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
-COLLEGES = {
+# Ordered list (used for the college links); COLLEGES is the set used for validation.
+COLLEGE_ORDER = [
     "教育學院",
     "文學院",
     "理學院",
@@ -41,12 +42,31 @@ COLLEGES = {
     "運動與休閒學院",
     "跨域科技產業創新研究學院",
     "其他",
-}
+]
+COLLEGES = set(COLLEGE_ORDER)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+
+# Max selling price (NT$) for each book condition.
+PRICE_LIMITS = {"NEW": 2000, "LIKE_NEW": 1500, "GOOD": 1200, "FAIR": 800}
+MAX_NOTE_LENGTH = 500
 
 
 def get_db_connection():
     return psycopg.connect(os.environ["DATABASE_URL"], row_factory=dict_row)
+
+
+def ensure_schema():
+    """Make sure columns added by newer features exist (safe to run repeatedly)."""
+    try:
+        with get_db_connection() as conn:
+            conn.execute(
+                "ALTER TABLE books ADD COLUMN IF NOT EXISTS condition_note TEXT"
+            )
+    except Exception:
+        app.logger.exception("Schema check failed")
+
+
+ensure_schema()
 
 
 # -------------------- HOME --------------------
@@ -54,7 +74,7 @@ def get_db_connection():
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return render_template("home.html", colleges=COLLEGE_ORDER)
 
 
 # -------------------- DATABASE TEST --------------------
@@ -236,7 +256,7 @@ def sell_page():
     if session.get("role") != "SELLER":
         return "只有賣家帳號可以上架書籍", 403
 
-    return render_template("sell.html")
+    return render_template("sell.html", price_limits=PRICE_LIMITS)
 
 
 # -------------------- BOOK MARKETPLACE PAGE --------------------
@@ -244,7 +264,18 @@ def sell_page():
 
 @app.route("/marketplace")
 def marketplace_page():
-    return render_template("marketplace.html")
+    return render_template(
+        "marketplace.html", colleges=COLLEGE_ORDER, preset_college=""
+    )
+
+
+@app.route("/college/<college_name>")
+def college_page(college_name):
+    if college_name not in COLLEGES:
+        return "找不到這個學院", 404
+    return render_template(
+        "marketplace.html", colleges=COLLEGE_ORDER, preset_college=college_name
+    )
 
 
 # -------------------- GET BOOKS --------------------
@@ -262,7 +293,8 @@ def get_books():
                     price,
                     condition,
                     image_url,
-                    college
+                    college,
+                    condition_note
                 FROM books
                 WHERE status = 'AVAILABLE'
                 ORDER BY created_at DESC
@@ -319,6 +351,16 @@ def create_book():
 
     except (InvalidOperation, ValueError, TypeError):
         return jsonify({"error": "價格格式錯誤"}), 400
+
+    # 7.1 Validate price limit by condition
+    limit = PRICE_LIMITS[condition]
+    if price > limit:
+        return jsonify({"error": f"此書況售價上限為 NT${limit}"}), 400
+
+    # 7.2 Validate condition note (optional)
+    condition_note = request.form.get("condition_note", "").strip()
+    if len(condition_note) > MAX_NOTE_LENGTH:
+        return jsonify({"error": f"書況說明不可超過 {MAX_NOTE_LENGTH} 字"}), 400
 
     # 8. Check image
     if not image or not image.filename:
@@ -377,11 +419,12 @@ def create_book():
         condition,
         status,
         image_url,
-        college
+        college,
+        condition_note
     )
     VALUES (
         %s, %s, %s, %s,
-        'AVAILABLE', %s, %s
+        'AVAILABLE', %s, %s, %s
     )
     RETURNING id
 """, (
@@ -390,7 +433,8 @@ def create_book():
     price,
     condition,
     image_url,
-    college
+    college,
+    condition_note or None
 ))
 
                 book = cur.fetchone()
@@ -889,6 +933,11 @@ def update_seller_book(book_id):
                 price = price.quantize(Decimal("0.01"))
             except (InvalidOperation, ValueError, TypeError):
                 return jsonify({"error": "價格不正確"}), 400
+            if ("price" in data or "condition" in data) and price > PRICE_LIMITS[condition]:
+                return (
+                    jsonify({"error": f"此書況售價上限為 NT${PRICE_LIMITS[condition]}"}),
+                    400,
+                )
             cur.execute(
                 """
                 UPDATE books SET title=%s, price=%s, condition=%s, status=%s

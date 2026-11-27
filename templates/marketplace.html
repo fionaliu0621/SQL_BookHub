@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>二手書市集 | BookHub</title>
+    <title>{% if preset_college %}{{ preset_college }}｜{% endif %}二手書市集 | BookHub</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -21,6 +21,10 @@
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='bookhub-fixes.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='college.css') }}"
     />
   </head>
   <body class="market-page">
@@ -76,12 +80,18 @@
         <div class="market-section-heading">
           <div>
             <div class="market-eyebrow">ON THE SHELF / 02</div>
-            <h2 id="market-title">探索二手好書 <span>✳</span></h2>
+            <h2 id="market-title">{% if preset_college %}{{ preset_college }} · {% endif %}探索二手好書 <span>✳</span></h2>
           </div>
           <p id="bookCount" class="market-count" aria-live="polite">
             正在載入書籍…
           </p>
         </div>
+        <nav class="college-chips" aria-label="學院分類">
+          <a class="college-chip{% if not preset_college %} active{% endif %}" href="/marketplace">全部學院</a>
+          {% for c in colleges %}
+          <a class="college-chip{% if c == preset_college %} active{% endif %}" href="{{ url_for('college_page', college_name=c) }}">{{ c }}</a>
+          {% endfor %}
+        </nav>
         <div class="market-controls">
           <label class="market-search"
             ><span aria-hidden="true">⌕</span
@@ -161,6 +171,7 @@
         <div class="market-eyebrow">BOOK DETAILS / 詳細資訊</div>
         <h2 id="dialogTitle"></h2>
         <p id="dialogCondition" class="dialog-condition"></p>
+        <p id="dialogNote" class="dialog-note" style="display: none"></p>
         <strong id="dialogPrice" class="dialog-price"></strong>
         <p class="dialog-note">這本書正在尋找下一位主人。</p>
         <a
@@ -357,6 +368,11 @@
           book.title || "未命名書籍";
         document.getElementById("dialogCondition").textContent =
           "書籍狀況 · " + (conditions[book.condition] || "未標示");
+        const noteEl = document.getElementById("dialogNote");
+        noteEl.textContent = book.condition_note
+          ? "書況說明：" + book.condition_note
+          : "";
+        noteEl.style.display = book.condition_note ? "" : "none";
         document.getElementById("dialogPrice").textContent = formatPrice(
           book.price,
         );
@@ -428,7 +444,14 @@
       };
       searchInput.addEventListener("input", resetAndRender);
       conditionFilter.addEventListener("change", resetAndRender);
-      collegeFilter.addEventListener("change", resetAndRender);
+      // The college filter is URL-driven: /college/<name> or /marketplace.
+      collegeFilter.addEventListener("change", () => {
+        const q = searchInput.value.trim();
+        const base = collegeFilter.value
+          ? "/college/" + encodeURIComponent(collegeFilter.value)
+          : "/marketplace";
+        location.assign(base + (q ? "?q=" + encodeURIComponent(q) : ""));
+      });
       pageSizeSelect.addEventListener("change", () => {
         try {
           localStorage.setItem("bookhub.pageSize", pageSizeSelect.value);
@@ -451,6 +474,7 @@
           marketMessage.textContent = "目前無法載入書籍，請稍後再試。";
         }
       }
+      collegeFilter.value = {{ preset_college|tojson }};
       searchInput.value = new URLSearchParams(location.search).get("q") || "";
       loadBooks();
     </script>
